@@ -1,6 +1,6 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { ScannedItem } from "@/utils/ai-scanner";
 import { revalidatePath } from "next/cache";
 
@@ -9,6 +9,18 @@ export async function saveScannedPrices(
   supermarket: string,
   date: string
 ) {
+  // Verificar si Supabase está configurado
+  if (!isSupabaseConfigured() || !supabase) {
+    return { 
+      results: items.map(item => ({ 
+        success: true, 
+        item: item.name,
+        isDemo: true 
+      })),
+      isDemo: true 
+    };
+  }
+
   const results = [];
 
   for (const item of items) {
@@ -66,5 +78,5 @@ export async function saveScannedPrices(
   }
 
   revalidatePath("/comparator");
-  return { results };
+  return { results, isDemo: false };
 }
