@@ -1,5 +1,8 @@
 import { ComparatorView } from "@/components/ComparatorView";
 
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic';
+
 export default function ComparatorPage() {
   return (
     <main className="container mx-auto px-4 py-6">

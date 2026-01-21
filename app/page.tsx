@@ -1,5 +1,8 @@
 import { ShoppingList } from "@/components/ShoppingList";
 
+// Forzar renderizado dinámico para evitar errores en build
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   return (
     <main className="container mx-auto px-4 py-6">
