@@ -1,14 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 
-if (!apiKey) {
-  throw new Error(
-    'Falta la variable de entorno NEXT_PUBLIC_GEMINI_API_KEY en .env.local'
-  );
-}
-
-const genAI = new GoogleGenerativeAI(apiKey);
+// Crear cliente solo si hay API key
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 export interface ScannedItem {
   name: string;
@@ -25,6 +20,13 @@ export interface ScanResult {
 }
 
 /**
+ * Verifica si la API de Gemini está configurada
+ */
+export function isGeminiConfigured(): boolean {
+  return !!apiKey && !!genAI;
+}
+
+/**
  * Escanea una imagen de ticket/producto usando Gemini AI
  * @param imageBase64 - Imagen en base64 o File/Blob
  * @returns Resultado estructurado con items y precios
@@ -32,6 +34,13 @@ export interface ScanResult {
 export async function scanReceiptImage(
   imageBase64: string | File | Blob
 ): Promise<ScanResult> {
+  // Verificar si Gemini está configurado
+  if (!genAI) {
+    throw new Error(
+      'La API de Gemini no está configurada. Añade NEXT_PUBLIC_GEMINI_API_KEY en .env.local'
+    );
+  }
+
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
   const prompt = `Eres un asistente experto en extraer información de tickets de compra y productos.
