@@ -1,18 +1,21 @@
 import { ShoppingList } from "@/components/ShoppingList";
 
-// Forzar renderizado dinámico para evitar errores en build
 export const dynamic = 'force-dynamic';
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <main className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Mi Lista de Compras</h1>
-        <p className="text-muted-foreground text-sm">
-          Gestiona tus compras de forma inteligente
-        </p>
+    <div className="min-h-screen bg-[#f2f2f7]">
+      {/* iOS-style header */}
+      <header className="sticky top-0 z-30 bg-white/80 ios-blur px-5 pt-12 pb-4 border-b border-slate-200">
+        <div className="flex items-center justify-between max-w-md mx-auto">
+          <h1 className="text-3xl font-bold tracking-tight text-black">Mi Lista de Compras</h1>
+          <button className="text-[#3b82f6] font-medium text-lg">Editar</button>
+        </div>
+      </header>
+      
+      <div className="max-w-md mx-auto">
+        <ShoppingList />
       </div>
-      <ShoppingList />
-    </main>
+    </div>
   );
 }

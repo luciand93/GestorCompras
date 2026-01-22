@@ -1,357 +1,339 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, Loader2, CheckCircle2, AlertCircle, X, Settings2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { scanReceiptImage, isGeminiConfigured } from "@/utils/ai-scanner";
-import { processImageForOCR, formatFileSize } from "@/utils/image-processor";
+import { scanReceiptImage, type ScannedPrice } from "@/utils/ai-scanner";
 import { saveScannedPrices } from "@/app/actions/scanner";
-import type { ScannedItem } from "@/utils/ai-scanner";
+import imageProcessor from "@/utils/image-processor";
 
 export function ScannerView() {
-  const [isScanning, setIsScanning] = useState(false);
-  const [result, setResult] = useState<ScannedItem[] | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [scannedItems, setScannedItems] = useState<ScannedPrice[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [processingInfo, setProcessingInfo] = useState<string | null>(null);
+  const [invertColors, setInvertColors] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // Configuración de procesamiento de imagen
-  const [useInvert, setUseInvert] = useState(false);
-
-  // Limpiar stream al desmontar
   useEffect(() => {
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [stream]);
-
-  // Asignar stream al video cuando cambie
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream, showCamera]);
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await processImage(file);
-    e.target.value = '';
-  };
-
-  const processImage = async (file: File | Blob) => {
-    if (!isGeminiConfigured()) {
-      setError("La API de Gemini no está configurada. Contacta al administrador.");
-      return;
-    }
-
-    setIsScanning(true);
-    setError(null);
-    setSuccess(false);
-    setResult(null);
-    setProcessingInfo("Optimizando imagen...");
-
-    try {
-      // Procesar imagen: reducir tamaño, escala de grises, aumentar contraste
-      const processed = await processImageForOCR(file, {
-        maxWidth: 800,
-        maxHeight: 1000,
-        quality: 0.5,
-        grayscale: true,
-        invert: useInvert,
-        contrast: 1.4,
-      });
-
-      setProcessingInfo(
-        `Imagen optimizada: ${formatFileSize(processed.originalSize)} → ${formatFileSize(processed.processedSize)} (${processed.width}x${processed.height})`
-      );
-
-      // Pequeña pausa para mostrar el mensaje
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProcessingInfo("Analizando con IA...");
-
-      // Enviar a Gemini
-      const scanResult = await scanReceiptImage(processed.base64);
-      setResult(scanResult.items);
-
-      await saveScannedPrices(
-        scanResult.items,
-        scanResult.supermarket,
-        scanResult.date
-      );
-
-      setSuccess(true);
-      setProcessingInfo(null);
-    } catch (err) {
-      console.error("Error scanning image:", err);
-      setError(
-        err instanceof Error ? err.message : "Error al procesar la imagen"
-      );
-      setProcessingInfo(null);
-    } finally {
-      setIsScanning(false);
-    }
-  };
+  }, []);
 
   const startCamera = async () => {
-    setCameraError(null);
-    
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraError("Tu navegador no soporta acceso a la cámara. Usa el botón 'Subir Foto' en su lugar.");
-      return;
-    }
-
     try {
+      setCameraError(null);
       const constraints = {
         video: {
-          facingMode: { ideal: "environment" },
+          facingMode: 'environment',
           width: { ideal: 1280 },
           height: { ideal: 720 }
-        },
-        audio: false
+        }
       };
-
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(mediaStream);
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      
       setShowCamera(true);
+      setShowResults(false);
+      setScannedItems([]);
+      setSavedSuccess(false);
     } catch (err: any) {
       console.error("Error accessing camera:", err);
-      
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        setCameraError("Permiso de cámara denegado. Por favor, permite el acceso a la cámara en la configuración de tu navegador.");
-      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-        setCameraError("No se encontró ninguna cámara en tu dispositivo.");
-      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
-        setCameraError("La cámara está siendo usada por otra aplicación.");
-      } else {
-        setCameraError("No se pudo acceder a la cámara. Usa el botón 'Subir Foto' en su lugar.");
-      }
+      setCameraError(
+        err.name === 'NotAllowedError'
+          ? "Permite el acceso a la cámara en la configuración"
+          : err.name === 'NotFoundError'
+            ? "No se encontró ninguna cámara"
+            : "Error al acceder a la cámara"
+      );
     }
   };
 
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
     setShowCamera(false);
-    setCameraError(null);
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current) return;
-
-    const video = videoRef.current;
+    
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.drawImage(video, 0, 0);
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          processImage(blob);
-          stopCamera();
-        }
-      },
-      "image/jpeg",
-      0.8
-    );
+    
+    if (ctx) {
+      ctx.drawImage(videoRef.current, 0, 0);
+      const imageData = canvas.toDataURL("image/jpeg", 0.8);
+      stopCamera();
+      await processImage(imageData);
+    }
   };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const imageData = event.target?.result as string;
+      await processImage(imageData);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const processImage = async (imageData: string) => {
+    setIsProcessing(true);
+    setError(null);
+    setSavedSuccess(false);
+
+    try {
+      const optimizedImage = await imageProcessor.processImage(imageData, {
+        maxWidth: 1024,
+        maxHeight: 1024,
+        grayscale: true,
+        contrast: 1.2,
+        invert: invertColors
+      });
+
+      const result = await scanReceiptImage(optimizedImage);
+
+      if (result.error) {
+        setError(result.error);
+        setScannedItems([]);
+      } else if (result.prices && result.prices.length > 0) {
+        setScannedItems(result.prices);
+        setShowResults(true);
+      } else {
+        setError("No se detectaron productos. Intenta con mejor iluminación.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Error desconocido");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSaveToDatabase = async () => {
+    if (scannedItems.length === 0) return;
+
+    const result = await saveScannedPrices(scannedItems);
+
+    if (result.success) {
+      setSavedSuccess(true);
+    } else {
+      setError(result.error || "Error al guardar");
+    }
+  };
+
+  const total = scannedItems.reduce((sum, item) => sum + item.price, 0);
 
   return (
-    <div className="space-y-4 mb-24">
-      {/* Controles de escaneo */}
-      <Card className="shadow-md">
-        <CardContent className="p-5">
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Sube o toma una foto de tu ticket para extraer precios automáticamente
-            </p>
-            
-            <div className="flex gap-3">
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isScanning}
-                className="flex-1 h-14"
-                variant="outline"
-              >
-                <Upload className="mr-2 h-5 w-5" />
-                Subir Foto
-              </Button>
-              <Button
-                onClick={showCamera ? stopCamera : startCamera}
-                disabled={isScanning}
-                className="flex-1 h-14"
-              >
-                {showCamera ? (
-                  <>
-                    <X className="mr-2 h-5 w-5" />
-                    Cerrar
-                  </>
-                ) : (
-                  <>
-                    <Camera className="mr-2 h-5 w-5" />
-                    Cámara
-                  </>
-                )}
-              </Button>
-            </div>
+    <div className="dark flex flex-col min-h-screen bg-[#102213] text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-[#102213]/80 ios-blur p-4 pb-2">
+        <h1 className="text-lg font-bold text-center">Escáner de Precios</h1>
+      </header>
 
-            {/* Opción de invertir colores */}
-            <div className="flex items-center justify-center gap-2 pt-2 border-t">
-              <Settings2 className="h-4 w-4 text-muted-foreground" />
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useInvert}
-                  onChange={(e) => setUseInvert(e.target.checked)}
-                  className="rounded"
-                />
-                <span className="text-muted-foreground">
-                  Invertir colores (para tickets oscuros)
-                </span>
-              </label>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Info de optimización */}
-      <div className="text-xs text-center text-muted-foreground">
-        📷 Las imágenes se optimizan automáticamente (escala de grises, compresión)
+      {/* Action buttons */}
+      <div className="flex gap-3 px-4 py-3">
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex-1 flex items-center justify-center gap-2 h-12 px-5 bg-primary/20 text-primary border border-primary/30 rounded-xl font-bold ios-button"
+        >
+          <span className="material-symbols-outlined">upload_file</span>
+          <span>Subir Foto</span>
+        </button>
+        <button
+          onClick={showCamera ? stopCamera : startCamera}
+          className={`flex-1 flex items-center justify-center gap-2 h-12 px-5 rounded-xl font-bold ios-button ${
+            showCamera 
+              ? 'bg-destructive text-white' 
+              : 'bg-primary text-[#102213] shadow-lg shadow-primary/30'
+          }`}
+        >
+          <span className="material-symbols-outlined">{showCamera ? 'close' : 'photo_camera'}</span>
+          <span>{showCamera ? 'Cerrar' : 'Cámara'}</span>
+        </button>
       </div>
 
-      {/* Error de cámara */}
-      {cameraError && (
-        <Card className="border-amber-500">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-amber-600">Problema con la cámara</p>
-                <p className="text-sm text-muted-foreground">{cameraError}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
 
-      {/* Vista de cámara */}
-      {showCamera && (
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            <div className="relative bg-black">
+      {/* Camera viewfinder */}
+      <div className="flex-1 px-4 py-2">
+        <div className="relative h-full min-h-[300px] rounded-3xl overflow-hidden border-2 border-primary/20 bg-slate-900">
+          {showCamera ? (
+            <>
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full aspect-[4/3] object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
               />
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                <Button
+              
+              {/* Scanning overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-64 h-80 border-2 border-dashed border-primary/50 rounded-xl relative">
+                  {/* Corner brackets */}
+                  <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-md"></div>
+                  <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-md"></div>
+                  <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-md"></div>
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-md"></div>
+                  
+                  {isProcessing && <div className="scanning-line"></div>}
+                </div>
+              </div>
+
+              {/* Camera controls */}
+              <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center gap-8 z-20">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center justify-center rounded-full w-12 h-12 bg-black/50 text-white backdrop-blur-md"
+                >
+                  <span className="material-symbols-outlined">image</span>
+                </button>
+                
+                <button
                   onClick={capturePhoto}
-                  size="lg"
-                  className="h-16 w-16 rounded-full shadow-lg bg-white hover:bg-gray-100"
+                  disabled={isProcessing}
+                  className="flex items-center justify-center rounded-full w-20 h-20 bg-primary/20 border-4 border-white p-1 backdrop-blur-sm ios-button"
                 >
-                  <Camera className="h-8 w-8 text-gray-900" />
-                </Button>
-              </div>
-              <button
-                onClick={stopCamera}
-                className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Estado de carga */}
-      {isScanning && (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Loader2 className="h-10 w-10 animate-spin mx-auto mb-3 text-primary" />
-            <p className="text-muted-foreground font-medium">
-              {processingInfo || "Procesando..."}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Error */}
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-destructive">Error</p>
-                <p className="text-sm text-muted-foreground">{error}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Éxito */}
-      {success && result && (
-        <Card className="border-green-500">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-green-600">
-                  ¡Escaneo completado!
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {result.length} productos extraídos y guardados
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {result.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center p-3 bg-muted rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">{item.name}</p>
-                    {item.unit_price && (
-                      <p className="text-xs text-muted-foreground">
-                        {item.unit_price.toFixed(2)}€/unidad
-                      </p>
+                  <div className={`bg-white rounded-full w-full h-full flex items-center justify-center ${isProcessing ? 'animate-pulse' : ''}`}>
+                    {isProcessing ? (
+                      <span className="material-symbols-outlined text-3xl text-[#102213] animate-spin">progress_activity</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>circle</span>
                     )}
                   </div>
-                  <p className="font-bold text-lg text-green-600">
-                    {item.price.toFixed(2)}€
-                  </p>
+                </button>
+                
+                <button
+                  onClick={() => setInvertColors(!invertColors)}
+                  className={`flex items-center justify-center rounded-full w-12 h-12 backdrop-blur-md ${invertColors ? 'bg-primary text-[#102213]' : 'bg-black/50 text-white'}`}
+                >
+                  <span className="material-symbols-outlined">invert_colors</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            // Placeholder state
+            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 p-6">
+              <span className="material-symbols-outlined text-8xl mb-4">receipt_long</span>
+              <p className="text-center text-lg">Escanea un ticket de compra para extraer los precios</p>
+            </div>
+          )}
+
+          {cameraError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/20 p-6">
+              <span className="material-symbols-outlined text-4xl text-destructive mb-4">error</span>
+              <p className="text-center text-destructive">{cameraError}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Error message */}
+      {error && !showCamera && (
+        <div className="mx-4 p-4 bg-destructive/20 border border-destructive/30 rounded-xl">
+          <p className="text-destructive text-center">{error}</p>
+        </div>
+      )}
+
+      {/* Results bottom sheet */}
+      {showResults && scannedItems.length > 0 && (
+        <div className="bg-[#102213] rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.5)] border-t border-primary/10">
+          <button className="flex h-8 w-full items-center justify-center" onClick={() => setShowResults(!showResults)}>
+            <div className="h-1.5 w-12 rounded-full bg-primary/40"></div>
+          </button>
+          
+          <div className="px-4 pb-6 max-h-[60vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">Resultados Extraídos</h3>
+              <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-1 rounded">
+                {scannedItems.length} Detectados
+              </span>
+            </div>
+            
+            <div className="space-y-3">
+              {scannedItems.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <span className="material-symbols-outlined">local_mall</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{item.productName}</p>
+                      <p className="text-[#92c99b] text-xs">{item.store || 'Tienda no identificada'}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-primary font-bold text-lg">{item.price.toFixed(2)}€</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Total */}
+            <div className="mt-6 pt-4 border-t border-primary/10 flex justify-between items-center">
+              <span className="text-[#92c99b] font-medium">Total Detectado</span>
+              <span className="text-xl font-black">{total.toFixed(2)}€</span>
+            </div>
+
+            {/* Save button */}
+            <button
+              onClick={handleSaveToDatabase}
+              disabled={savedSuccess}
+              className={`w-full mt-4 font-bold py-3 rounded-xl ios-button ${
+                savedSuccess 
+                  ? 'bg-[#92c99b] text-[#102213]' 
+                  : 'bg-primary text-[#102213] shadow-lg'
+              }`}
+            >
+              {savedSuccess ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined">check_circle</span>
+                  Guardado en base de datos
+                </span>
+              ) : (
+                'Guardar precios'
+              )}
+            </button>
+          </div>
+          
+          <div className="h-24"></div>
+        </div>
+      )}
+
+      {/* Processing indicator */}
+      {isProcessing && !showCamera && (
+        <div className="mx-4 mb-4 p-6 bg-primary/10 border border-primary/20 rounded-xl text-center">
+          <span className="material-symbols-outlined text-4xl text-primary animate-spin mb-2">progress_activity</span>
+          <p className="text-primary font-medium">Procesando imagen con IA...</p>
+        </div>
       )}
     </div>
   );

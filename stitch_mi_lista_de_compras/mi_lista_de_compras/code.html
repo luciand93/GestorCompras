@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mi Lista de Compras</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#22c55e",
+                        "secondary-blue": "#3b82f6",
+                        "ios-bg": "#f2f2f7",
+                        "ios-card": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "ios": "12px",
+                        "ios-lg": "16px",
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f2f2f7;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        .custom-checkbox {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border: 1.5px solid #c7c7cc;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+            background-color: transparent;
+            transition: all 0.2s ease;
+        }
+        .custom-checkbox:checked {
+            background-color: #22c55e;
+            border-color: #22c55e;
+        }
+        .custom-checkbox:checked::after {
+            content: 'check';
+            font-family: 'Material Symbols Outlined';
+            font-size: 16px;
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-slate-900 min-h-screen flex flex-col font-display">
+<header class="sticky top-0 z-30 bg-white/80 ios-blur px-5 pt-12 pb-4 border-b border-slate-200">
+<div class="flex items-center justify-between">
+<h1 class="text-3xl font-bold tracking-tight text-black">Mi Lista de Compras</h1>
+<button class="text-secondary-blue font-medium text-lg">Editar</button>
+</div>
+</header>
+<main class="flex-1 px-4 py-6 pb-48">
+<section class="mb-8">
+<div class="flex items-center justify-between mb-3 px-1">
+<h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pendientes</h3>
+<span class="text-xs text-slate-400">3 artículos</span>
+</div>
+<div class="space-y-0.5 bg-white rounded-ios overflow-hidden shadow-sm border border-slate-100">
+<div class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">
+<input class="custom-checkbox" type="checkbox"/>
+<div class="flex-1">
+<p class="text-[17px] font-medium leading-snug">Leche Entera</p>
+<p class="text-sm text-slate-500">1 unidad • Lácteos</p>
+</div>
+<button class="text-slate-300 hover:text-red-500 transition-colors p-1">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+<div class="h-[0.5px] bg-slate-100 ml-14"></div>
+<div class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">
+<input class="custom-checkbox" type="checkbox"/>
+<div class="flex-1">
+<p class="text-[17px] font-medium leading-snug">Pan de Molde</p>
+<p class="text-sm text-slate-500">2 paquetes • Panadería</p>
+</div>
+<button class="text-slate-300 hover:text-red-500 transition-colors p-1">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+<div class="h-[0.5px] bg-slate-100 ml-14"></div>
+<div class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">
+<input class="custom-checkbox" type="checkbox"/>
+<div class="flex-1">
+<p class="text-[17px] font-medium leading-snug">Manzanas Rojas</p>
+<p class="text-sm text-slate-500">1 kg • Frutería</p>
+</div>
+<button class="text-slate-300 hover:text-red-500 transition-colors p-1">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+</section>
+<section>
+<div class="flex items-center justify-between mb-3 px-1">
+<h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completados</h3>
+<span class="text-xs text-slate-400">2 artículos</span>
+</div>
+<div class="space-y-0.5 bg-white rounded-ios overflow-hidden shadow-sm border border-slate-100">
+<div class="flex items-center gap-4 p-4 opacity-60">
+<input checked="" class="custom-checkbox" type="checkbox"/>
+<div class="flex-1">
+<p class="text-[17px] font-medium line-through text-slate-400 decoration-slate-300">Café Molido</p>
+<p class="text-sm text-slate-400">1 frasco</p>
+</div>
+<button class="text-slate-300 p-1">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+<div class="h-[0.5px] bg-slate-100 ml-14"></div>
+<div class="flex items-center gap-4 p-4 opacity-60">
+<input checked="" class="custom-checkbox" type="checkbox"/>
+<div class="flex-1">
+<p class="text-[17px] font-medium line-through text-slate-400 decoration-slate-300">Papel Higiénico</p>
+<p class="text-sm text-slate-400">12 rollos</p>
+</div>
+<button class="text-slate-300 p-1">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<div class="fixed bottom-24 left-0 right-0 px-6 flex flex-col gap-3 pointer-events-none">
+<div class="max-w-md mx-auto w-full flex flex-col items-end gap-3">
+<button class="pointer-events-auto flex items-center justify-center gap-2 bg-secondary-blue text-white font-semibold py-3 px-5 rounded-full shadow-lg active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-xl">add</span>
+<span class="text-base">Añadir</span>
+</button>
+<button class="pointer-events-auto w-full flex items-center justify-center gap-2 bg-primary text-white font-bold text-[17px] py-4 rounded-ios-lg shadow-xl active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined filled-icon">shopping_cart_checkout</span>
+<span>Finalizar Compra</span>
+</button>
+</div>
+</div>
+<nav class="fixed bottom-0 left-0 right-0 bg-white/90 ios-blur border-t border-slate-200 px-6 pb-8 pt-2">
+<div class="max-w-md mx-auto flex items-center justify-between">
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-symbols-outlined text-[28px] text-slate-400 group-active:scale-90 transition-transform">home</span>
+<span class="text-[10px] font-medium text-slate-400">Inicio</span>
+</button>
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-symbols-outlined filled-icon text-[28px] text-secondary-blue group-active:scale-90 transition-transform">list_alt</span>
+<span class="text-[10px] font-medium text-secondary-blue">Listas</span>
+</button>
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-symbols-outlined text-[28px] text-slate-400 group-active:scale-90 transition-transform">person</span>
+<span class="text-[10px] font-medium text-slate-400">Perfil</span>
+</button>
+</div>
+</nav>
+
+</body></html>
