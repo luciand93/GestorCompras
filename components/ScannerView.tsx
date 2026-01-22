@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { scanReceiptImage, type ScannedPrice } from "@/utils/ai-scanner";
+import { scanImageOnServer, type ScannedPrice } from "@/app/actions/scan-image";
 import { saveScannedPrices } from "@/app/actions/scanner";
 import imageProcessor from "@/utils/image-processor";
 
@@ -139,7 +139,7 @@ export function ScannerView() {
         invert: invertColors
       });
 
-      const result = await scanReceiptImage(optimizedImage);
+      const result = await scanImageOnServer(optimizedImage);
 
       if (result.error) {
         setError(result.error);
