@@ -27,11 +27,13 @@ export function isGeminiConfigured(): boolean {
 }
 
 // Modelos disponibles que soportan imágenes (actualizados enero 2026)
+// Ordenados para evitar problemas de cuota
 const MODELS_TO_TRY = [
-  'gemini-2.5-flash',        // Más nuevo y potente
-  'gemini-2.0-flash',        // Rápido y eficiente
-  'gemini-2.0-flash-001',    // Versión estable
-  'gemini-flash-latest',     // Último disponible
+  'gemini-2.5-flash',           // Más nuevo, cuota separada
+  'gemini-2.5-pro',             // Pro version
+  'gemini-2.0-flash-lite',      // Lite version, menos cuota
+  'gemini-flash-latest',        // Alias al último
+  'gemini-2.0-flash-exp',       // Experimental
 ];
 
 /**
@@ -148,14 +150,32 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
         continue;
       }
       
-      // Si es otro tipo de error grave, lanzarlo
-      if (error.message?.includes('API key') || error.message?.includes('quota')) {
+      // Si es error de API key, lanzarlo
+      if (error.message?.includes('API key')) {
         throw error;
+      }
+      
+      // Si es error de cuota, continuar con el siguiente modelo
+      if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('exceeded')) {
+        console.log(`Cuota excedida para ${modelName}, probando siguiente modelo...`);
+        continue;
       }
     }
   }
 
-  // Si ningún modelo funcionó
+  // Si ningún modelo funcionó, verificar si fue por cuota
+  const isQuotaError = lastError?.message?.includes('429') || 
+                       lastError?.message?.includes('quota') || 
+                       lastError?.message?.includes('exceeded');
+  
+  if (isQuotaError) {
+    throw new Error(
+      `Has alcanzado el límite de uso gratuito de la API de Gemini. ` +
+      `Opciones: 1) Espera unos minutos y vuelve a intentar. ` +
+      `2) Configura facturación en Google Cloud para más cuota.`
+    );
+  }
+
   throw new Error(
     `No se pudo procesar la imagen. ` +
     `Error: ${lastError?.message || 'Error desconocido'}. ` +
