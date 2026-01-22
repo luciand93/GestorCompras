@@ -2,8 +2,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// API key del servidor (no NEXT_PUBLIC_)
-const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+// API key del servidor (sin NEXT_PUBLIC_ para que no se exponga al cliente)
+const apiKey = process.env.GEMINI_API_KEY || '';
 
 export interface ScannedPrice {
   productName: string;
@@ -16,79 +16,110 @@ export interface ScanResult {
   error?: string;
 }
 
+// Modelos a probar en orden
+const MODELS = [
+  'gemini-2.0-flash-lite',  // Menos restricciones
+  'gemini-2.0-flash',
+  'gemini-2.5-flash',
+];
+
 /**
- * Escanea una imagen de ticket usando Gemini AI (ejecutado en servidor)
+ * Escanea una imagen de ticket usando Gemini AI (ejecutado en servidor Vercel)
  */
 export async function scanImageOnServer(imageBase64: string): Promise<ScanResult> {
-  if (!apiKey || apiKey.length < 10) {
+  // Log para debug
+  console.log('=== SCAN IMAGE SERVER ===');
+  console.log('API Key configurada:', apiKey ? `Sí (${apiKey.slice(0, 10)}...)` : 'NO');
+  
+  if (!apiKey) {
     return {
       prices: [],
-      error: 'Falta configurar GEMINI_API_KEY en Vercel → Settings → Environment Variables'
+      error: 'GEMINI_API_KEY no está configurada en Vercel. Ve a Settings → Environment Variables y añádela (sin NEXT_PUBLIC_). Luego haz Redeploy.'
     };
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const genAI = new GoogleGenerativeAI(apiKey);
 
-    const prompt = `Analiza este ticket de compra. Responde SOLO con JSON:
+  const prompt = `Analiza este ticket de compra. Responde SOLO con JSON:
 {"store":"nombre","products":[{"name":"producto","price":1.23}]}
 Sin markdown, sin explicaciones. Precios con punto decimal.`;
 
-    // Preparar imagen
-    const base64Data = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
-    const mimeType = imageBase64.match(/^data:(image\/[^;]+);/)?.[1] || 'image/jpeg';
+  // Preparar imagen
+  const base64Data = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
+  const mimeType = imageBase64.match(/^data:(image\/[^;]+);/)?.[1] || 'image/jpeg';
+  
+  let lastError = '';
 
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: base64Data, mimeType } }
-    ]);
+  for (const modelName of MODELS) {
+    try {
+      console.log(`Probando modelo: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
 
-    const text = result.response.text();
-    console.log('Respuesta Gemini:', text);
+      const result = await model.generateContent([
+        prompt,
+        { inlineData: { data: base64Data, mimeType } }
+      ]);
 
-    // Parsear JSON
-    const cleanText = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-    
-    if (!jsonMatch) {
-      return { prices: [], error: 'No se detectaron productos. Intenta con mejor iluminación.' };
+      const text = result.response.text();
+      console.log(`Respuesta de ${modelName}:`, text.slice(0, 200));
+
+      // Parsear JSON
+      const cleanText = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        console.log('No se encontró JSON en la respuesta');
+        continue;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      const products = parsed.products || [];
+      const store = parsed.store || 'Tienda';
+
+      const prices: ScannedPrice[] = products
+        .map((p: any) => ({
+          productName: String(p.name || 'Producto').trim(),
+          price: parseFloat(String(p.price || 0).replace(',', '.')),
+          store
+        }))
+        .filter((p: ScannedPrice) => p.price > 0);
+
+      if (prices.length === 0) {
+        continue;
+      }
+
+      console.log(`✓ Éxito con ${modelName}: ${prices.length} productos`);
+      return { prices };
+
+    } catch (err: any) {
+      const msg = err.message || String(err);
+      console.error(`✗ Error con ${modelName}:`, msg.slice(0, 200));
+      lastError = msg;
+      
+      // Si es error de API key, no seguir probando
+      if (msg.includes('API_KEY_INVALID')) {
+        return { prices: [], error: 'API Key inválida. Genera una nueva en aistudio.google.com/apikey' };
+      }
+      
+      // Seguir probando con el siguiente modelo
+      continue;
     }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const products = parsed.products || [];
-    const store = parsed.store || 'Tienda';
-
-    const prices: ScannedPrice[] = products
-      .map((p: any) => ({
-        productName: String(p.name || 'Producto').trim(),
-        price: parseFloat(String(p.price || 0).replace(',', '.')),
-        store
-      }))
-      .filter((p: ScannedPrice) => p.price > 0);
-
-    if (prices.length === 0) {
-      return { prices: [], error: 'No se encontraron productos con precios válidos.' };
-    }
-
-    return { prices };
-
-  } catch (err: any) {
-    const msg = err.message || String(err);
-    console.error('Error Gemini:', msg);
-
-    if (msg.includes('API_KEY_INVALID') || msg.includes('API key not valid')) {
-      return { prices: [], error: 'API Key inválida. Genera una nueva en aistudio.google.com/apikey' };
-    }
-    
-    if (msg.includes('429') || msg.includes('quota') || msg.includes('exceeded')) {
-      return { prices: [], error: 'Límite de API alcanzado. Espera 1 minuto.' };
-    }
-    
-    if (msg.includes('403')) {
-      return { prices: [], error: 'Acceso denegado. Verifica que GEMINI_API_KEY esté configurada en Vercel (sin NEXT_PUBLIC_).' };
-    }
-
-    return { prices: [], error: `Error: ${msg.slice(0, 150)}` };
   }
+
+  // Analizar el último error
+  if (lastError.includes('429') || lastError.includes('quota')) {
+    return { prices: [], error: 'Límite de API alcanzado. Espera 1 minuto.' };
+  }
+  
+  if (lastError.includes('403')) {
+    return { 
+      prices: [], 
+      error: 'Error 403: La API key no tiene permisos. Crea una nueva API key en aistudio.google.com/apikey y configúrala en Vercel como GEMINI_API_KEY' 
+    };
+  }
+
+  return { 
+    prices: [], 
+    error: lastError ? `Error: ${lastError.slice(0, 100)}` : 'No se pudieron detectar productos. Intenta con mejor iluminación.' 
+  };
 }
