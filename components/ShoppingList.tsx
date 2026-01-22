@@ -11,6 +11,7 @@ import {
   clearAllItems,
 } from "@/app/actions/shopping-list";
 import { searchProducts, getRecentProducts } from "@/app/actions/products";
+import { ListComparison } from "./ListComparison";
 import type { ShoppingListItem } from "@/lib/supabase";
 
 export function ShoppingList() {
@@ -19,6 +20,7 @@ export function ShoppingList() {
   const [isDemo, setIsDemo] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -289,6 +291,17 @@ export function ShoppingList() {
             <span>Añadir</span>
           </button>
           
+          {/* Compare button */}
+          {pendingItems.length > 0 && (
+            <button
+              onClick={() => setShowComparison(true)}
+              className="pointer-events-auto w-full flex items-center justify-center gap-2 bg-[#19331e] text-white font-bold py-3 rounded-xl border border-[#13ec37]/30 ios-button"
+            >
+              <span className="material-symbols-outlined">compare_arrows</span>
+              <span>Comparar precios ({pendingItems.length})</span>
+            </button>
+          )}
+          
           {/* Finalize button */}
           {checkedItems.length > 0 && (
             <button
@@ -425,6 +438,11 @@ export function ShoppingList() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Comparison Modal */}
+      {showComparison && (
+        <ListComparison onClose={() => setShowComparison(false)} />
       )}
     </>
   );
