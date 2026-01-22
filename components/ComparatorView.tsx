@@ -197,7 +197,7 @@ export function ComparatorView() {
         {filteredProducts.length === 0 && searchQuery && (
           <div className="p-4 mt-8 text-center">
             <span className="material-symbols-outlined text-5xl text-[#92c99b]/30 mb-4">search_off</span>
-            <p className="text-[#92c99b]">No se encontró "{searchQuery}"</p>
+            <p className="text-[#92c99b]">No se encontró &quot;{searchQuery}&quot;</p>
           </div>
         )}
 
