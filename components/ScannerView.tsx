@@ -2,13 +2,22 @@
 
 import { useState, useRef, useEffect } from "react";
 import { scanImageOnServer, type ScannedPrice } from "@/app/actions/scan-image";
-import { saveScannedPrices } from "@/app/actions/scanner";
+import { saveScannedPricesWithMatching } from "@/app/actions/scanner";
 import { getStores } from "@/app/actions/stores";
+import { findSimilarProducts, type ProductSuggestion } from "@/app/actions/product-matching";
 import imageProcessor from "@/utils/image-processor";
+
+interface ScannedItemWithMatch extends ScannedPrice {
+  matchedProductId?: string;
+  matchedProductName?: string;
+  suggestions?: ProductSuggestion[];
+  isNewProduct?: boolean;
+  customName?: string;
+}
 
 export function ScannerView() {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [scannedItems, setScannedItems] = useState<ScannedPrice[]>([]);
+  const [scannedItems, setScannedItems] = useState<ScannedItemWithMatch[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -21,6 +30,10 @@ export function ScannerView() {
   const [selectedStore, setSelectedStore] = useState<string>("");
   const [newStoreName, setNewStoreName] = useState("");
   const [availableStores, setAvailableStores] = useState<string[]>([]);
+
+  // Para vinculación de productos
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [showProductMatcher, setShowProductMatcher] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -149,7 +162,21 @@ export function ScannerView() {
         setError(result.error);
         setScannedItems([]);
       } else if (result.prices && result.prices.length > 0) {
-        setScannedItems(result.prices);
+        // Buscar coincidencias para cada producto
+        const itemsWithMatches: ScannedItemWithMatch[] = await Promise.all(
+          result.prices.map(async (item) => {
+            const suggestions = await findSimilarProducts(item.productName);
+            return {
+              ...item,
+              suggestions,
+              isNewProduct: suggestions.length === 0,
+              matchedProductId: suggestions.length > 0 ? suggestions[0].id : undefined,
+              matchedProductName: suggestions.length > 0 ? suggestions[0].name : undefined
+            };
+          })
+        );
+        
+        setScannedItems(itemsWithMatches);
         setShowResults(true);
         
         // Si la tienda no está clara, mostrar selector
@@ -172,7 +199,6 @@ export function ScannerView() {
 
   const handleSelectStore = (store: string) => {
     setSelectedStore(store);
-    // Actualizar todos los items con la tienda seleccionada
     setScannedItems(items => items.map(item => ({ ...item, store })));
     setShowStoreSelector(false);
     setNewStoreName("");
@@ -185,20 +211,46 @@ export function ScannerView() {
     }
   };
 
+  const handleMatchProduct = (index: number, suggestion: ProductSuggestion) => {
+    setScannedItems(items => items.map((item, i) => 
+      i === index 
+        ? { ...item, matchedProductId: suggestion.id, matchedProductName: suggestion.name, isNewProduct: false }
+        : item
+    ));
+    setShowProductMatcher(false);
+    setEditingItemIndex(null);
+  };
+
+  const handleSetAsNewProduct = (index: number, customName?: string) => {
+    setScannedItems(items => items.map((item, i) => 
+      i === index 
+        ? { ...item, matchedProductId: undefined, matchedProductName: undefined, isNewProduct: true, customName }
+        : item
+    ));
+    setShowProductMatcher(false);
+    setEditingItemIndex(null);
+  };
+
   const handleSaveToDatabase = async () => {
     if (scannedItems.length === 0) return;
 
-    // Si no hay tienda seleccionada, mostrar selector
     if (!selectedStore) {
       setShowStoreSelector(true);
       return;
     }
 
-    const result = await saveScannedPrices(scannedItems);
+    const itemsToSave = scannedItems.map(item => ({
+      productName: item.customName || item.productName,
+      price: item.price,
+      store: selectedStore,
+      matchedProductId: item.matchedProductId,
+      isNewProduct: item.isNewProduct
+    }));
+
+    const result = await saveScannedPricesWithMatching(itemsToSave);
 
     if (result.success) {
       setSavedSuccess(true);
-      // Limpiar después de 2 segundos
       setTimeout(() => {
         setScannedItems([]);
         setShowResults(false);
@@ -206,7 +258,7 @@ export function ScannerView() {
         setSelectedStore("");
       }, 2000);
     } else {
-      setError("Error al guardar");
+      setError(result.error || "Error al guardar");
     }
   };
 
@@ -219,6 +271,7 @@ export function ScannerView() {
   };
 
   const total = scannedItems.reduce((sum, item) => sum + item.price, 0);
+  const currentEditingItem = editingItemIndex !== null ? scannedItems[editingItemIndex] : null;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#102213] text-white">
@@ -321,10 +374,10 @@ export function ScannerView() {
           
           <div className="px-4 pb-6 max-h-[60vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">Resultados Extraídos</h3>
+              <h3 className="text-lg font-bold">Productos Detectados</h3>
               <div className="flex items-center gap-2">
                 <span className="bg-[#13ec37]/20 text-[#13ec37] text-xs font-bold px-2 py-1 rounded">
-                  {scannedItems.length} Detectados
+                  {scannedItems.length}
                 </span>
                 <button onClick={clearResults} className="text-[#92c99b] p-1">
                   <span className="material-symbols-outlined text-xl">close</span>
@@ -346,14 +399,44 @@ export function ScannerView() {
             
             <div className="space-y-3">
               {scannedItems.map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-[#13ec37]/5 border border-[#13ec37]/10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#13ec37]/10 flex items-center justify-center text-[#13ec37]">
-                      <span className="material-symbols-outlined">local_mall</span>
+                <div key={index} className="p-3 rounded-xl bg-[#13ec37]/5 border border-[#13ec37]/10">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm">{item.productName}</p>
+                      <p className="text-[#13ec37] font-bold">{item.price.toFixed(2)}€</p>
                     </div>
-                    <p className="font-semibold text-sm">{item.productName}</p>
+                    <button
+                      onClick={() => { setEditingItemIndex(index); setShowProductMatcher(true); }}
+                      className="text-[#92c99b] p-1"
+                    >
+                      <span className="material-symbols-outlined text-xl">edit</span>
+                    </button>
                   </div>
-                  <p className="text-[#13ec37] font-bold text-lg">{item.price.toFixed(2)}€</p>
+                  
+                  {/* Matching status */}
+                  <div className="mt-2 pt-2 border-t border-[#13ec37]/10">
+                    {item.matchedProductId ? (
+                      <div className="flex items-center gap-2 text-xs text-[#13ec37]">
+                        <span className="material-symbols-outlined text-sm">link</span>
+                        <span>Vinculado a: {item.matchedProductName}</span>
+                      </div>
+                    ) : item.isNewProduct ? (
+                      <div className="flex items-center gap-2 text-xs text-amber-400">
+                        <span className="material-symbols-outlined text-sm">add_circle</span>
+                        <span>Nuevo producto: {item.customName || item.productName}</span>
+                      </div>
+                    ) : item.suggestions && item.suggestions.length > 0 ? (
+                      <div className="flex items-center gap-2 text-xs text-amber-400">
+                        <span className="material-symbols-outlined text-sm">help</span>
+                        <span>¿Vincular a producto existente?</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-[#92c99b]/60">
+                        <span className="material-symbols-outlined text-sm">add_circle</span>
+                        <span>Se creará como nuevo</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -373,7 +456,7 @@ export function ScannerView() {
               {savedSuccess ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined">check_circle</span>
-                  ¡Guardado! Limpiando...
+                  ¡Guardado!
                 </span>
               ) : (
                 'Guardar precios'
@@ -396,7 +479,6 @@ export function ScannerView() {
             <div className="px-6 pb-6 max-h-[60vh] overflow-y-auto">
               <h2 className="text-lg font-bold mb-4">Seleccionar Tienda</h2>
               
-              {/* Crear nueva */}
               <div className="flex gap-2 mb-4">
                 <input
                   type="text"
@@ -414,7 +496,6 @@ export function ScannerView() {
                 </button>
               </div>
 
-              {/* Lista de tiendas */}
               {availableStores.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs text-[#92c99b]/60 uppercase tracking-wider mb-2">Tiendas guardadas</p>
@@ -430,17 +511,82 @@ export function ScannerView() {
                     >
                       <span className="material-symbols-outlined text-[#13ec37]">store</span>
                       <span>{store}</span>
-                      {selectedStore === store && (
-                        <span className="material-symbols-outlined ml-auto text-[#13ec37]">check</span>
-                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product matcher modal */}
+      {showProductMatcher && currentEditingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => { setShowProductMatcher(false); setEditingItemIndex(null); }} />
+          <div className="relative w-full max-w-md bg-[#102213] rounded-2xl border border-[#13ec37]/20 max-h-[80vh] overflow-hidden">
+            <div className="sticky top-0 bg-[#102213] p-4 border-b border-[#13ec37]/10">
+              <h2 className="text-lg font-bold">Vincular Producto</h2>
+              <p className="text-sm text-[#92c99b]/60 mt-1">"{currentEditingItem.productName}"</p>
+            </div>
+            
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              {/* Sugerencias */}
+              {currentEditingItem.suggestions && currentEditingItem.suggestions.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs text-[#92c99b]/60 uppercase tracking-wider mb-2">Productos similares</p>
+                  {currentEditingItem.suggestions.map((suggestion, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleMatchProduct(editingItemIndex!, suggestion)}
+                      className={`w-full p-3 mb-2 rounded-xl text-left flex items-center justify-between ${
+                        currentEditingItem.matchedProductId === suggestion.id
+                          ? 'bg-[#13ec37]/20 border border-[#13ec37]'
+                          : 'bg-[#19331e] border border-[#13ec37]/10'
+                      }`}
+                    >
+                      <div>
+                        <p className="font-semibold">{suggestion.name}</p>
+                        <p className="text-xs text-[#92c99b]/60">{Math.round(suggestion.similarity * 100)}% similar</p>
+                      </div>
+                      <span className="material-symbols-outlined text-[#13ec37]">link</span>
                     </button>
                   ))}
                 </div>
               )}
 
-              {availableStores.length === 0 && (
-                <p className="text-center text-[#92c99b]/60 py-4">No hay tiendas guardadas. Crea una nueva arriba.</p>
-              )}
+              {/* Crear como nuevo */}
+              <div className="border-t border-[#13ec37]/10 pt-4">
+                <p className="text-xs text-[#92c99b]/60 uppercase tracking-wider mb-2">O crear como nuevo producto</p>
+                <input
+                  type="text"
+                  defaultValue={currentEditingItem.productName}
+                  placeholder="Nombre del producto..."
+                  className="w-full px-4 py-3 mb-3 bg-[#19331e] border border-[#13ec37]/20 rounded-xl text-white"
+                  id="customProductName"
+                />
+                <button
+                  onClick={() => {
+                    const input = document.getElementById('customProductName') as HTMLInputElement;
+                    handleSetAsNewProduct(editingItemIndex!, input?.value);
+                  }}
+                  className="w-full py-3 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl font-semibold"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">add_circle</span>
+                    Crear nuevo producto
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-[#13ec37]/10">
+              <button
+                onClick={() => { setShowProductMatcher(false); setEditingItemIndex(null); }}
+                className="w-full py-3 bg-[#19331e] text-white rounded-xl font-semibold"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
