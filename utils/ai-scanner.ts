@@ -26,6 +26,15 @@ export function isGeminiConfigured(): boolean {
   return !!apiKey && !!genAI;
 }
 
+// Lista de modelos a probar en orden de preferencia
+const MODELS_TO_TRY = [
+  'gemini-2.0-flash',
+  'gemini-1.5-flash-latest', 
+  'gemini-1.5-flash',
+  'gemini-1.5-pro-latest',
+  'gemini-pro-vision',
+];
+
 /**
  * Escanea una imagen de ticket/producto usando Gemini AI
  * @param imageBase64 - Imagen en base64 o File/Blob
@@ -40,8 +49,6 @@ export async function scanReceiptImage(
       'La API de Gemini no está configurada. Añade NEXT_PUBLIC_GEMINI_API_KEY en .env.local'
     );
   }
-
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
   const prompt = `Eres un asistente experto en extraer información de tickets de compra y productos.
 
@@ -71,57 +78,79 @@ REGLAS IMPORTANTES:
 
 IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
 
-  try {
-    let imagePart;
+  // Preparar la imagen
+  let imagePart;
 
-    if (typeof imageBase64 === 'string') {
-      // Si es base64, convertir a formato que Gemini entienda
-      const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
-      const mimeType = imageBase64.match(/^data:image\/(png|jpeg|jpg);base64,/)?.[1] || 'jpeg';
-      
-      imagePart = {
-        inlineData: {
-          data: base64Data,
-          mimeType: `image/${mimeType}`,
-        },
-      };
-    } else {
-      // Si es File o Blob, convertir a base64
-      const arrayBuffer = await imageBase64.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const base64Data = buffer.toString('base64');
-      const mimeType = imageBase64.type || 'image/jpeg';
-      
-      imagePart = {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType,
-        },
-      };
-    }
-
-    const result = await model.generateContent([prompt, imagePart]);
-    const response = await result.response;
-    const text = response.text();
-
-    // Limpiar la respuesta para extraer solo el JSON
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No se pudo extraer JSON de la respuesta de Gemini');
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]) as ScanResult;
-
-    // Validar estructura
-    if (!parsed.items || !Array.isArray(parsed.items)) {
-      throw new Error('La respuesta no tiene el formato esperado');
-    }
-
-    return parsed;
-  } catch (error) {
-    console.error('Error al escanear imagen:', error);
-    throw new Error(
-      `Error al procesar la imagen: ${error instanceof Error ? error.message : 'Error desconocido'}`
-    );
+  if (typeof imageBase64 === 'string') {
+    const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
+    const mimeMatch = imageBase64.match(/^data:image\/(png|jpeg|jpg|webp);base64,/);
+    const mimeType = mimeMatch ? `image/${mimeMatch[1]}` : 'image/jpeg';
+    
+    imagePart = {
+      inlineData: {
+        data: base64Data,
+        mimeType: mimeType,
+      },
+    };
+  } else {
+    const arrayBuffer = await imageBase64.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Data = buffer.toString('base64');
+    const mimeType = imageBase64.type || 'image/jpeg';
+    
+    imagePart = {
+      inlineData: {
+        data: base64Data,
+        mimeType: mimeType,
+      },
+    };
   }
+
+  // Intentar con diferentes modelos
+  let lastError: Error | null = null;
+
+  for (const modelName of MODELS_TO_TRY) {
+    try {
+      console.log(`Intentando con modelo: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      
+      const result = await model.generateContent([prompt, imagePart]);
+      const response = await result.response;
+      const text = response.text();
+
+      // Limpiar la respuesta para extraer solo el JSON
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No se pudo extraer JSON de la respuesta de Gemini');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]) as ScanResult;
+
+      // Validar estructura
+      if (!parsed.items || !Array.isArray(parsed.items)) {
+        throw new Error('La respuesta no tiene el formato esperado');
+      }
+
+      console.log(`Éxito con modelo: ${modelName}`);
+      return parsed;
+    } catch (error: any) {
+      console.error(`Error con modelo ${modelName}:`, error.message);
+      lastError = error;
+      
+      // Si es un error 404 (modelo no encontrado), probar el siguiente
+      if (error.message?.includes('404') || error.message?.includes('not found')) {
+        continue;
+      }
+      
+      // Si es otro tipo de error, lanzarlo
+      throw error;
+    }
+  }
+
+  // Si ningún modelo funcionó
+  throw new Error(
+    `No se pudo procesar la imagen. Ningún modelo de Gemini está disponible. ` +
+    `Último error: ${lastError?.message || 'Error desconocido'}. ` +
+    `Por favor, verifica tu API key en https://aistudio.google.com`
+  );
 }
