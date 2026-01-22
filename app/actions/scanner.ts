@@ -1,20 +1,17 @@
 "use server";
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import type { ScannedItem } from "@/utils/ai-scanner";
+import type { ScannedPrice } from "@/utils/ai-scanner";
 import { revalidatePath } from "next/cache";
 
-export async function saveScannedPrices(
-  items: ScannedItem[],
-  supermarket: string,
-  date: string
-) {
+export async function saveScannedPrices(items: ScannedPrice[]) {
   // Verificar si Supabase está configurado
   if (!isSupabaseConfigured() || !supabase) {
     return { 
+      success: true,
       results: items.map(item => ({ 
         success: true, 
-        item: item.name,
+        item: item.productName,
         isDemo: true 
       })),
       isDemo: true 
@@ -22,13 +19,14 @@ export async function saveScannedPrices(
   }
 
   const results = [];
+  const today = new Date().toISOString().split('T')[0];
 
   for (const item of items) {
     // Buscar producto por nombre (case-insensitive)
     const { data: existingProduct } = await supabase
       .from("products")
       .select("id")
-      .ilike("name", item.name)
+      .ilike("name", item.productName)
       .limit(1)
       .single();
 
@@ -41,7 +39,7 @@ export async function saveScannedPrices(
       const { data: newProduct, error: productError } = await supabase
         .from("products")
         .insert({
-          name: item.name,
+          name: item.productName,
           category: null,
         })
         .select()
@@ -49,7 +47,7 @@ export async function saveScannedPrices(
 
       if (productError) {
         console.error("Error creating product:", productError);
-        results.push({ success: false, error: productError, item: item.name });
+        results.push({ success: false, error: productError.message, item: item.productName });
         continue;
       }
 
@@ -61,22 +59,22 @@ export async function saveScannedPrices(
       .from("prices")
       .insert({
         product_id: productId,
-        supermarket_name: supermarket,
+        supermarket_name: item.store || 'Tienda',
         price: item.price,
-        unit_price: item.unit_price || null,
-        date_recorded: date,
+        unit_price: null,
+        date_recorded: today,
       })
       .select()
       .single();
 
     if (priceError) {
       console.error("Error saving price:", priceError);
-      results.push({ success: false, error: priceError, item: item.name });
+      results.push({ success: false, error: priceError.message, item: item.productName });
     } else {
-      results.push({ success: true, data: priceData, item: item.name });
+      results.push({ success: true, data: priceData, item: item.productName });
     }
   }
 
   revalidatePath("/comparator");
-  return { results, isDemo: false };
+  return { success: true, results, isDemo: false };
 }
