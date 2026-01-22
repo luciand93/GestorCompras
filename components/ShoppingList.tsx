@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Check, Trash2, ShoppingBag, AlertTriangle, Search } from "lucide-react";
+import { Plus, Check, Trash2, ShoppingBag, AlertTriangle, Search, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import {
   toggleItemChecked,
   deleteItem,
   clearCheckedItems,
+  clearAllItems,
 } from "@/app/actions/shopping-list";
 import { searchProducts, getRecentProducts } from "@/app/actions/products";
 import type { ShoppingListItem } from "@/lib/supabase";
@@ -26,6 +27,7 @@ export function ShoppingList() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [recentProducts, setRecentProducts] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   const loadItems = async () => {
     setLoading(true);
@@ -132,6 +134,18 @@ export function ShoppingList() {
     }
   };
 
+  const handleClearAll = async () => {
+    const { error } = await clearAllItems();
+    if (!error) {
+      if (isDemo) {
+        setItems([]);
+      } else {
+        await loadItems();
+      }
+      setShowClearDialog(false);
+    }
+  };
+
   const checkedItems = items.filter((item) => item.is_checked);
   const pendingItems = items.filter((item) => !item.is_checked);
 
@@ -184,6 +198,19 @@ export function ShoppingList() {
 
       <div className="space-y-4 mb-32">
         {/* Items pendientes */}
+        {/* Botón vaciar lista */}
+        {items.length > 0 && (
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => setShowClearDialog(true)}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Nueva lista
+            </button>
+          </div>
+        )}
+
         {pendingItems.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-3">Pendientes ({pendingItems.length})</h2>
@@ -410,6 +437,41 @@ export function ShoppingList() {
                 Añadir
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para confirmar vaciar lista */}
+      <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl">¿Vaciar lista?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-muted-foreground">
+              Se eliminarán todos los productos de tu lista actual ({items.length} items).
+              Esta acción no se puede deshacer.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Los precios guardados de tickets anteriores se mantendrán.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowClearDialog(false)}
+              variant="outline"
+              className="flex-1 h-12"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleClearAll} 
+              variant="destructive"
+              className="flex-1 h-12"
+            >
+              <Trash2 className="mr-2 h-5 w-5" />
+              Vaciar lista
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

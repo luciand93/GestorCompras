@@ -143,3 +143,22 @@ export async function clearCheckedItems() {
   revalidatePath("/");
   return { error: null, isDemo: false };
 }
+
+export async function clearAllItems() {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { error: null, isDemo: true };
+  }
+
+  const { error } = await supabase
+    .from("shopping_list")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000"); // Truco para borrar todos
+
+  if (error) {
+    console.error("Error clearing all items:", error);
+    return { error, isDemo: false };
+  }
+
+  revalidatePath("/");
+  return { error: null, isDemo: false };
+}
