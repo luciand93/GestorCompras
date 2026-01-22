@@ -27,19 +27,20 @@ const storeIcons: Record<string, string> = {
 };
 
 export function ComparatorView() {
-  const [products, setProducts] = useState<ProductGroup[]>([]);
+  const [allProducts, setAllProducts] = useState<ProductGroup[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<ProductGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<ProductGroup | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadData() {
       const { data, error } = await getPricesWithHistory();
       
       if (error || !data || data.length === 0) {
-        // Sin datos - mostrar estado vacío
-        setProducts([]);
+        setAllProducts([]);
+        setFilteredProducts([]);
       } else {
-        // Group by product name
         const grouped: Record<string, PriceData[]> = {};
         data.forEach((p: PriceData) => {
           if (!grouped[p.product_name]) grouped[p.product_name] = [];
@@ -57,7 +58,8 @@ export function ComparatorView() {
           };
         });
 
-        setProducts(productGroups);
+        setAllProducts(productGroups);
+        setFilteredProducts(productGroups);
       }
       
       setLoading(false);
@@ -65,6 +67,20 @@ export function ComparatorView() {
 
     loadData();
   }, []);
+
+  // Filtrar por búsqueda
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredProducts(allProducts);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = allProducts.filter(p => 
+        p.productName.toLowerCase().includes(query)
+      );
+      setFilteredProducts(filtered);
+    }
+    setSelectedProduct(null);
+  }, [searchQuery, allProducts]);
 
   const getStoreIcon = (store: string) => {
     const key = store.toLowerCase().replace(/\s+/g, '');
@@ -95,11 +111,10 @@ export function ComparatorView() {
     );
   }
 
-  // Estado vacío - sin datos
-  if (products.length === 0) {
+  // Estado vacío
+  if (allProducts.length === 0) {
     return (
       <div className="min-h-screen bg-[#102213] text-white pb-24">
-        {/* Header */}
         <header className="sticky top-0 z-10 bg-[#102213]/80 ios-blur border-b border-white/10">
           <div className="flex items-center justify-between p-4 max-w-md mx-auto">
             <h2 className="text-lg font-bold">Comparador</h2>
@@ -111,43 +126,19 @@ export function ComparatorView() {
             <span className="material-symbols-outlined text-7xl text-[#92c99b]/20 mb-4">analytics</span>
             <p className="text-xl font-semibold text-white mb-2">Sin datos de precios</p>
             <p className="text-[#92c99b]/60 mb-8">
-              Escanea tickets de compra para empezar a comparar precios entre tiendas
+              Escanea tickets de compra para empezar a comparar precios
             </p>
-            <a
-              href="/scanner"
-              className="inline-flex items-center gap-2 bg-[#13ec37] text-[#102213] font-bold py-4 px-8 rounded-xl ios-button"
-            >
+            <a href="/scanner" className="inline-flex items-center gap-2 bg-[#13ec37] text-[#102213] font-bold py-4 px-8 rounded-xl ios-button">
               <span className="material-symbols-outlined">receipt_long</span>
               Escanear primer ticket
             </a>
-          </div>
-          
-          <div className="mt-8 p-4 bg-[#19331e]/50 rounded-xl border border-[#13ec37]/10">
-            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#13ec37]">lightbulb</span>
-              ¿Cómo funciona?
-            </h3>
-            <ol className="space-y-3 text-[#92c99b]/80 text-sm">
-              <li className="flex gap-3">
-                <span className="bg-[#13ec37]/20 text-[#13ec37] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                <span>Escanea tus tickets de compra con la cámara</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="bg-[#13ec37]/20 text-[#13ec37] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                <span>La IA extrae los productos y precios automáticamente</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="bg-[#13ec37]/20 text-[#13ec37] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                <span>Compara precios entre diferentes tiendas</span>
-              </li>
-            </ol>
           </div>
         </main>
       </div>
     );
   }
 
-  const currentProduct = selectedProduct || products[0];
+  const currentProduct = selectedProduct || (filteredProducts.length > 0 ? filteredProducts[0] : null);
 
   return (
     <div className="min-h-screen bg-[#102213] text-white pb-24">
@@ -155,19 +146,37 @@ export function ComparatorView() {
       <header className="sticky top-0 z-10 bg-[#102213]/80 ios-blur border-b border-white/10">
         <div className="flex items-center justify-between p-4 max-w-md mx-auto">
           <h2 className="text-lg font-bold">Comparador</h2>
-          <div className="flex items-center gap-4">
-            <span className="material-symbols-outlined cursor-pointer text-[#92c99b]">share</span>
+        </div>
+        
+        {/* Buscador */}
+        <div className="px-4 pb-4 max-w-md mx-auto">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#92c99b]/60">search</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar producto..."
+              className="w-full pl-10 pr-4 py-3 bg-[#19331e] border border-[#13ec37]/20 rounded-xl text-white placeholder:text-[#92c99b]/40 focus:outline-none focus:ring-2 focus:ring-[#13ec37]"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#92c99b]/60"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="max-w-md mx-auto">
-        {/* Product selector */}
-        {products.length > 1 && (
+        {/* Product selector chips */}
+        {filteredProducts.length > 1 && (
           <div className="px-4 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#92c99b] mb-2">Seleccionar producto:</p>
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-              {products.map((product, i) => (
+              {filteredProducts.map((product, i) => (
                 <button
                   key={i}
                   onClick={() => setSelectedProduct(product)}
@@ -184,9 +193,16 @@ export function ComparatorView() {
           </div>
         )}
 
+        {/* Sin resultados de búsqueda */}
+        {filteredProducts.length === 0 && searchQuery && (
+          <div className="p-4 mt-8 text-center">
+            <span className="material-symbols-outlined text-5xl text-[#92c99b]/30 mb-4">search_off</span>
+            <p className="text-[#92c99b]">No se encontró "{searchQuery}"</p>
+          </div>
+        )}
+
         {currentProduct && (
           <>
-            {/* Product context */}
             <div className="px-4 pt-6 pb-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-[#13ec37]/70 mb-1">Analizando precios de:</p>
               <h1 className="text-2xl font-black">{currentProduct.productName}</h1>
@@ -221,9 +237,9 @@ export function ComparatorView() {
                     </div>
                     
                     {currentProduct.prices.length > 1 && (
-                      <button className="flex items-center justify-center h-9 px-4 bg-[#13ec37] text-[#102213] text-sm font-bold rounded-lg shadow-md ios-button">
+                      <span className="h-9 px-4 bg-[#13ec37] text-[#102213] text-sm font-bold rounded-lg flex items-center">
                         Ahorras {(currentProduct.avgPrice - currentProduct.bestPrice.price).toFixed(2)}€
-                      </button>
+                      </span>
                     )}
                   </div>
                 </div>
@@ -242,10 +258,7 @@ export function ComparatorView() {
                     const diff = price.price - currentProduct.bestPrice.price;
                     
                     return (
-                      <div 
-                        key={index} 
-                        className="flex items-center gap-4 bg-[#112214] px-4 min-h-[80px] py-3 justify-between border-b border-white/5"
-                      >
+                      <div key={index} className="flex items-center gap-4 bg-[#112214] px-4 min-h-[80px] py-3 justify-between border-b border-white/5">
                         <div className="flex items-center gap-4">
                           <div className="w-14 h-14 rounded-lg bg-[#234829] flex items-center justify-center text-[#13ec37]">
                             <span className="material-symbols-outlined text-2xl">{getStoreIcon(price.store)}</span>
@@ -265,7 +278,7 @@ export function ComparatorView() {
               </>
             )}
 
-            {/* Stats card */}
+            {/* Stats */}
             {currentProduct.prices.length > 1 && (
               <div className="p-4 mt-4">
                 <div className="rounded-xl bg-[#19331e] border border-[#13ec37]/20 p-4">

@@ -383,17 +383,17 @@ export function ShoppingList() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 mb-8">
                 <button
                   onClick={() => setShowAddDialog(false)}
-                  className="flex-1 py-3 rounded-xl border border-[#13ec37]/20 font-semibold text-white"
+                  className="flex-1 py-4 rounded-xl border border-[#13ec37]/20 font-semibold text-white"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleAddItem}
                   disabled={!newItemName.trim()}
-                  className="flex-1 py-3 rounded-xl bg-[#13ec37] text-[#102213] font-bold disabled:opacity-50 ios-button"
+                  className="flex-1 py-4 rounded-xl bg-[#13ec37] text-[#102213] font-bold disabled:opacity-50 ios-button"
                 >
                   Añadir
                 </button>
