@@ -189,3 +189,40 @@ export async function getAllProducts() {
 
   return { data: data || [], error: null, isDemo: false };
 }
+
+export async function getPricesWithHistory() {
+  if (!isSupabaseConfigured() || !supabase) {
+    // Modo demo: devolver datos demo
+    return { data: [], error: null, isDemo: true };
+  }
+
+  // Obtener todos los precios con información del producto
+  const { data, error } = await supabase
+    .from("prices")
+    .select(`
+      id,
+      price,
+      supermarket_name,
+      date_recorded,
+      products (
+        name
+      )
+    `)
+    .order("date_recorded", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error("Error fetching prices history:", error);
+    return { data: [], error, isDemo: false };
+  }
+
+  // Transformar datos
+  const prices = (data || []).map((p: any) => ({
+    product_name: p.products?.name || 'Producto',
+    store: p.supermarket_name,
+    price: p.price,
+    date: p.date_recorded,
+  }));
+
+  return { data: prices, error: null, isDemo: false };
+}
