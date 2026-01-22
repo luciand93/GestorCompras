@@ -21,7 +21,6 @@ export function isGeminiConfigured(): boolean {
  * Escanea una imagen de ticket usando Gemini AI
  */
 export async function scanReceiptImage(imageBase64: string): Promise<ScanResult> {
-  // Verificar API key
   if (!apiKey || apiKey.length < 10) {
     return {
       prices: [],
@@ -32,8 +31,8 @@ export async function scanReceiptImage(imageBase64: string): Promise<ScanResult>
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Usar gemini-1.5-flash que es el modelo estándar actual
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Usar gemini-2.0-flash que está disponible en la cuenta
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const prompt = `Analiza este ticket de compra. Responde SOLO con JSON:
 {"store":"nombre","products":[{"name":"producto","price":1.23}]}
@@ -81,7 +80,6 @@ Sin markdown, sin explicaciones. Precios con punto decimal.`;
     const msg = err.message || String(err);
     console.error('Error Gemini:', msg);
 
-    // Errores específicos
     if (msg.includes('API_KEY_INVALID') || msg.includes('API key not valid')) {
       return { prices: [], error: 'API Key inválida. Genera una nueva en aistudio.google.com/apikey' };
     }
@@ -91,14 +89,9 @@ Sin markdown, sin explicaciones. Precios con punto decimal.`;
     }
     
     if (msg.includes('404') || msg.includes('not found')) {
-      return { prices: [], error: 'Modelo no disponible. Tu API key puede tener restricciones. Crea una nueva en aistudio.google.com/apikey' };
+      return { prices: [], error: 'Modelo no disponible. Contacta soporte.' };
     }
 
-    if (msg.includes('PERMISSION_DENIED')) {
-      return { prices: [], error: 'Permiso denegado. Activa la API de Gemini en tu proyecto de Google Cloud.' };
-    }
-
-    // Error genérico con detalle
     return { prices: [], error: `Error: ${msg.slice(0, 150)}` };
   }
 }
