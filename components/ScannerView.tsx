@@ -135,12 +135,15 @@ export function ScannerView() {
   const handleSaveToDatabase = async () => {
     if (scannedItems.length === 0) return;
 
-    const result = await saveScannedPrices(scannedItems);
-
-    if (result.success) {
-      setSavedSuccess(true);
-    } else {
-      setError(result.error || "Error al guardar");
+    try {
+      const result = await saveScannedPrices(scannedItems);
+      if (result.success) {
+        setSavedSuccess(true);
+      } else {
+        setError("Error al guardar los precios");
+      }
+    } catch (err: any) {
+      setError(err.message || "Error al guardar");
     }
   };
 
