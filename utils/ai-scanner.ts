@@ -5,18 +5,15 @@ const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 // Crear cliente solo si hay API key
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-export interface ScannedItem {
-  name: string;
+export interface ScannedPrice {
+  productName: string;
   price: number;
-  unit_price?: number;
-  supermarket: string;
-  quantity?: number;
+  store?: string;
 }
 
 export interface ScanResult {
-  items: ScannedItem[];
-  date: string;
-  supermarket: string;
+  prices: ScannedPrice[];
+  error?: string;
 }
 
 /**
@@ -26,86 +23,58 @@ export function isGeminiConfigured(): boolean {
   return !!apiKey && !!genAI;
 }
 
-// Modelos disponibles que soportan imágenes (actualizados enero 2026)
-// Ordenados para evitar problemas de cuota
+// Modelos disponibles que soportan imágenes (verificados)
+// https://ai.google.dev/models/gemini
 const MODELS_TO_TRY = [
-  'gemini-2.5-flash',           // Más nuevo, cuota separada
-  'gemini-2.5-pro',             // Pro version
-  'gemini-2.0-flash-lite',      // Lite version, menos cuota
-  'gemini-flash-latest',        // Alias al último
-  'gemini-2.0-flash-exp',       // Experimental
+  'gemini-1.5-flash',           // Modelo principal flash
+  'gemini-1.5-flash-latest',    // Alias a la última versión
+  'gemini-1.5-pro',             // Modelo pro (más capacidad)
+  'gemini-1.5-pro-latest',      // Alias pro
+  'gemini-pro-vision',          // Modelo vision legacy
 ];
 
 /**
  * Escanea una imagen de ticket/producto usando Gemini AI
- * @param imageBase64 - Imagen en base64 o File/Blob
- * @returns Resultado estructurado con items y precios
+ * @param imageBase64 - Imagen en base64
+ * @returns Resultado estructurado con precios
  */
-export async function scanReceiptImage(
-  imageBase64: string | File | Blob
-): Promise<ScanResult> {
+export async function scanReceiptImage(imageBase64: string): Promise<ScanResult> {
   // Verificar si Gemini está configurado
   if (!genAI) {
-    throw new Error(
-      'La API de Gemini no está configurada. Añade NEXT_PUBLIC_GEMINI_API_KEY en .env.local'
-    );
+    return {
+      prices: [],
+      error: 'La API de Gemini no está configurada. Añade NEXT_PUBLIC_GEMINI_API_KEY en .env.local'
+    };
   }
 
-  const prompt = `Eres un asistente experto en extraer información de tickets de compra y productos.
+  const prompt = `Analiza esta imagen de ticket de compra y extrae los productos con sus precios.
 
-Analiza la imagen proporcionada y extrae la siguiente información en formato JSON estricto:
-
+Responde ÚNICAMENTE con un JSON válido en este formato exacto:
 {
-  "supermarket": "nombre del supermercado",
-  "date": "YYYY-MM-DD",
-  "items": [
-    {
-      "name": "nombre del producto",
-      "price": precio_total_del_item,
-      "unit_price": precio_por_kg_o_litro_si_disponible,
-      "quantity": cantidad_si_disponible
-    }
+  "store": "nombre de la tienda",
+  "products": [
+    {"name": "producto 1", "price": 1.23},
+    {"name": "producto 2", "price": 4.56}
   ]
 }
 
-REGLAS IMPORTANTES:
-- Devuelve SOLO el JSON, sin texto adicional, sin markdown, sin código.
-- Si no puedes identificar el supermercado, usa "Desconocido".
-- Si no hay fecha visible, usa la fecha de hoy en formato YYYY-MM-DD.
-- El precio debe ser un número decimal (ej: 3.50, no "3,50€").
-- Si hay precio unitario (por kg/l), inclúyelo en unit_price.
-- Si no hay precio unitario, omite el campo unit_price.
-- Extrae todos los items visibles en el ticket.
-
-IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
+REGLAS:
+- Solo JSON, sin markdown, sin explicaciones
+- Precios como números decimales (usa punto, no coma)
+- Si no identificas la tienda, usa "Tienda"
+- Extrae TODOS los productos visibles`;
 
   // Preparar la imagen
-  let imagePart;
-
-  if (typeof imageBase64 === 'string') {
-    const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/, '');
-    const mimeMatch = imageBase64.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/);
-    const mimeType = mimeMatch ? `image/${mimeMatch[1] === 'jpg' ? 'jpeg' : mimeMatch[1]}` : 'image/jpeg';
-    
-    imagePart = {
-      inlineData: {
-        data: base64Data,
-        mimeType: mimeType,
-      },
-    };
-  } else {
-    const arrayBuffer = await imageBase64.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const base64Data = btoa(String.fromCharCode(...uint8Array));
-    const mimeType = imageBase64.type || 'image/jpeg';
-    
-    imagePart = {
-      inlineData: {
-        data: base64Data,
-        mimeType: mimeType,
-      },
-    };
-  }
+  const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/, '');
+  const mimeMatch = imageBase64.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/);
+  const mimeType = mimeMatch ? `image/${mimeMatch[1] === 'jpg' ? 'jpeg' : mimeMatch[1]}` : 'image/jpeg';
+  
+  const imagePart = {
+    inlineData: {
+      data: base64Data,
+      mimeType: mimeType,
+    },
+  };
 
   // Intentar con diferentes modelos
   let lastError: Error | null = null;
@@ -119,66 +88,66 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
       const response = await result.response;
       const text = response.text();
 
-      console.log(`Respuesta del modelo ${modelName}:`, text.substring(0, 200));
+      console.log(`Respuesta de ${modelName}:`, text.substring(0, 300));
 
       // Limpiar la respuesta para extraer solo el JSON
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error('No se pudo extraer JSON de la respuesta de Gemini');
+        throw new Error('No se pudo extraer JSON de la respuesta');
       }
 
-      const parsed = JSON.parse(jsonMatch[0]) as ScanResult;
-
-      // Validar estructura
-      if (!parsed.items || !Array.isArray(parsed.items)) {
-        throw new Error('La respuesta no tiene el formato esperado');
+      const parsed = JSON.parse(jsonMatch[0]);
+      
+      // Extraer productos
+      const products = parsed.products || parsed.items || [];
+      const store = parsed.store || parsed.supermarket || 'Tienda';
+      
+      if (!Array.isArray(products) || products.length === 0) {
+        throw new Error('No se encontraron productos');
       }
 
-      console.log(`Éxito con modelo: ${modelName}, items encontrados: ${parsed.items.length}`);
-      return parsed;
+      const prices: ScannedPrice[] = products.map((p: any) => ({
+        productName: p.name || p.product || p.nombre || 'Producto',
+        price: typeof p.price === 'number' ? p.price : parseFloat(String(p.price || p.precio || 0).replace(',', '.')),
+        store: store
+      })).filter((p: ScannedPrice) => p.price > 0);
+
+      console.log(`Éxito con ${modelName}: ${prices.length} productos`);
+      
+      return { prices };
     } catch (error: any) {
-      console.error(`Error con modelo ${modelName}:`, error.message);
+      console.error(`Error con ${modelName}:`, error.message);
       lastError = error;
       
-      // Si es un error 404 (modelo no encontrado), probar el siguiente
+      // Si es error 404/not found, probar siguiente modelo
       if (error.message?.includes('404') || error.message?.includes('not found')) {
         continue;
       }
       
-      // Si es un error de parsing JSON, probar el siguiente modelo
-      if (error.message?.includes('JSON') || error.name === 'SyntaxError') {
+      // Si es error de cuota, probar siguiente modelo
+      if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('exceeded')) {
         continue;
       }
       
-      // Si es error de API key, lanzarlo
-      if (error.message?.includes('API key')) {
-        throw error;
-      }
-      
-      // Si es error de cuota, continuar con el siguiente modelo
-      if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('exceeded')) {
-        console.log(`Cuota excedida para ${modelName}, probando siguiente modelo...`);
+      // Si es error de parsing, probar siguiente
+      if (error.name === 'SyntaxError') {
         continue;
       }
     }
   }
 
-  // Si ningún modelo funcionó, verificar si fue por cuota
-  const isQuotaError = lastError?.message?.includes('429') || 
-                       lastError?.message?.includes('quota') || 
-                       lastError?.message?.includes('exceeded');
+  // Verificar tipo de error
+  const errorMsg = lastError?.message || 'Error desconocido';
   
-  if (isQuotaError) {
-    throw new Error(
-      `Has alcanzado el límite de uso gratuito de la API de Gemini. ` +
-      `Opciones: 1) Espera unos minutos y vuelve a intentar. ` +
-      `2) Configura facturación en Google Cloud para más cuota.`
-    );
+  if (errorMsg.includes('429') || errorMsg.includes('quota')) {
+    return {
+      prices: [],
+      error: 'Límite de API alcanzado. Espera unos minutos o configura facturación en Google Cloud.'
+    };
   }
 
-  throw new Error(
-    `No se pudo procesar la imagen. ` +
-    `Error: ${lastError?.message || 'Error desconocido'}. ` +
-    `Verifica que la imagen sea clara y contenga un ticket legible.`
-  );
+  return {
+    prices: [],
+    error: `No se pudo procesar: ${errorMsg}`
+  };
 }

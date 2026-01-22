@@ -1,68 +1,49 @@
 /**
  * Utilidades para procesar imágenes antes de enviarlas a la IA
- * - Reduce resolución
+ * - Reduce resolución agresivamente
  * - Convierte a escala de grises
  * - Aumenta contraste
- * - Comprime
+ * - Comprime al máximo
  */
 
-export interface ProcessedImage {
-  base64: string;
-  mimeType: string;
-  width: number;
-  height: number;
-  originalSize: number;
-  processedSize: number;
+export interface ImageProcessOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
+  grayscale?: boolean;
+  invert?: boolean;
+  contrast?: number;
 }
 
 /**
- * Procesa una imagen para optimizarla para OCR
- * @param file - Archivo de imagen o Blob
- * @param options - Opciones de procesamiento
+ * Procesa una imagen base64 para optimizarla para OCR
  */
-export async function processImageForOCR(
-  file: File | Blob,
-  options: {
-    maxWidth?: number;
-    maxHeight?: number;
-    quality?: number;
-    grayscale?: boolean;
-    invert?: boolean;
-    contrast?: number;
-  } = {}
-): Promise<ProcessedImage> {
+async function processImage(
+  imageBase64: string,
+  options: ImageProcessOptions = {}
+): Promise<string> {
   const {
-    maxWidth = 800,      // Resolución máxima ancho
-    maxHeight = 1200,    // Resolución máxima alto
-    quality = 0.6,       // Calidad JPEG (0.0 - 1.0)
-    grayscale = true,    // Convertir a escala de grises
-    invert = false,      // Invertir colores (negativo)
-    contrast = 1.3,      // Aumentar contraste (1.0 = normal)
+    maxWidth = 640,       // Reducido de 800 a 640
+    maxHeight = 800,      // Reducido de 1200 a 800
+    quality = 0.5,        // Reducido de 0.6 a 0.5
+    grayscale = true,
+    invert = false,
+    contrast = 1.4,       // Aumentado para mejor legibilidad
   } = options;
 
   return new Promise((resolve, reject) => {
     const img = new Image();
-    const originalSize = file.size;
 
     img.onload = () => {
       // Calcular nuevas dimensiones manteniendo proporción
       let { width, height } = img;
       
-      if (width > maxWidth) {
-        height = (height * maxWidth) / width;
-        width = maxWidth;
-      }
-      
-      if (height > maxHeight) {
-        width = (width * maxHeight) / height;
-        height = maxHeight;
-      }
+      // Reducir agresivamente
+      const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
 
-      // Redondear dimensiones
-      width = Math.round(width);
-      height = Math.round(height);
-
-      // Crear canvas para procesar
+      // Crear canvas
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -76,23 +57,22 @@ export async function processImageForOCR(
       // Dibujar imagen redimensionada
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Obtener datos de píxeles para procesamiento
+      // Procesar píxeles
       const imageData = ctx.getImageData(0, 0, width, height);
       const data = imageData.data;
 
-      // Procesar cada píxel
       for (let i = 0; i < data.length; i += 4) {
         let r = data[i];
         let g = data[i + 1];
         let b = data[i + 2];
 
-        // Convertir a escala de grises
+        // Escala de grises
         if (grayscale) {
           const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
           r = g = b = gray;
         }
 
-        // Aplicar contraste
+        // Contraste
         if (contrast !== 1.0) {
           const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
           r = Math.min(255, Math.max(0, factor * (r - 128) + 128));
@@ -100,7 +80,7 @@ export async function processImageForOCR(
           b = Math.min(255, Math.max(0, factor * (b - 128) + 128));
         }
 
-        // Invertir colores (negativo)
+        // Invertir (negativo)
         if (invert) {
           r = 255 - r;
           g = 255 - g;
@@ -112,46 +92,35 @@ export async function processImageForOCR(
         data[i + 2] = b;
       }
 
-      // Aplicar cambios
       ctx.putImageData(imageData, 0, 0);
 
-      // Convertir a base64 con compresión JPEG
-      const base64 = canvas.toDataURL('image/jpeg', quality);
+      // Exportar como JPEG comprimido
+      const result = canvas.toDataURL('image/jpeg', quality);
       
-      // Calcular tamaño aproximado del resultado
-      const processedSize = Math.round((base64.length - 'data:image/jpeg;base64,'.length) * 0.75);
-
-      resolve({
-        base64,
-        mimeType: 'image/jpeg',
-        width,
-        height,
-        originalSize,
-        processedSize,
-      });
+      console.log(`Imagen procesada: ${width}x${height}, ~${Math.round(result.length * 0.75 / 1024)}KB`);
+      
+      resolve(result);
     };
 
-    img.onerror = () => {
-      reject(new Error('Error al cargar la imagen'));
-    };
-
-    // Cargar imagen desde File/Blob
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => {
-      reject(new Error('Error al leer el archivo'));
-    };
-    reader.readAsDataURL(file);
+    img.onerror = () => reject(new Error('Error al cargar imagen'));
+    img.src = imageBase64;
   });
 }
 
 /**
  * Formatea el tamaño de archivo para mostrar
  */
-export function formatFileSize(bytes: number): string {
+function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+// Exportar como objeto para mantener compatibilidad
+const imageProcessor = {
+  processImage,
+  formatFileSize,
+};
+
+export default imageProcessor;
+export { processImage, formatFileSize };

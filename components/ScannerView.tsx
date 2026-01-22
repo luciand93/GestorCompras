@@ -104,11 +104,13 @@ export function ScannerView() {
     setSavedSuccess(false);
 
     try {
+      // Imagen muy reducida para ahorrar tokens de API
       const optimizedImage = await imageProcessor.processImage(imageData, {
-        maxWidth: 1024,
-        maxHeight: 1024,
+        maxWidth: 512,    // Muy reducido
+        maxHeight: 640,   // Muy reducido
+        quality: 0.4,     // Alta compresión
         grayscale: true,
-        contrast: 1.2,
+        contrast: 1.5,    // Alto contraste para mejor OCR
         invert: invertColors
       });
 
