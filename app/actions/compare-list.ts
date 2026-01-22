@@ -149,16 +149,19 @@ export async function compareShoppingList(): Promise<ComparisonResult> {
       });
     });
 
-    let bestSingleStore: StoreTotal | null = null;
-    let minTotal = Infinity;
+    const productsWithPrices = comparisons.filter(c => c.prices.length > 0).length;
     
-    storeTotals.forEach((data, store) => {
-      // Solo considerar tiendas que tengan todos los productos
-      if (data.items.length === comparisons.filter(c => c.prices.length > 0).length && data.total < minTotal) {
-        minTotal = data.total;
-        bestSingleStore = { store, ...data };
-      }
-    });
+    // Convertir a array para poder ordenar y filtrar
+    const storeArray = Array.from(storeTotals.entries())
+      .filter(([_, data]) => data.items.length === productsWithPrices)
+      .map(([store, data]) => ({
+        store,
+        total: data.total,
+        items: data.items
+      }))
+      .sort((a, b) => a.total - b.total);
+    
+    const bestSingleStore: StoreTotal | null = storeArray.length > 0 ? storeArray[0] : null;
 
     // Calcular split optimizado (mejor precio de cada producto)
     const optimizedMap = new Map<string, { name: string; price: number; quantity: number }[]>();

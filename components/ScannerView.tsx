@@ -527,7 +527,7 @@ export function ScannerView() {
           <div className="relative w-full max-w-md bg-[#102213] rounded-2xl border border-[#13ec37]/20 max-h-[80vh] overflow-hidden">
             <div className="sticky top-0 bg-[#102213] p-4 border-b border-[#13ec37]/10">
               <h2 className="text-lg font-bold">Vincular Producto</h2>
-              <p className="text-sm text-[#92c99b]/60 mt-1">"{currentEditingItem.productName}"</p>
+              <p className="text-sm text-[#92c99b]/60 mt-1">&quot;{currentEditingItem.productName}&quot;</p>
             </div>
             
             <div className="p-4 max-h-[60vh] overflow-y-auto">

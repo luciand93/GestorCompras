@@ -33,7 +33,8 @@ export async function saveScannedPricesWithMatching(items: ScannedItemToSave[]) 
         item: item.productName,
         isDemo: true 
       })),
-      isDemo: true 
+      isDemo: true,
+      error: undefined
     };
   }
 
@@ -131,5 +132,11 @@ export async function saveScannedPricesWithMatching(items: ScannedItemToSave[]) 
   revalidatePath("/comparator");
   revalidatePath("/");
   
-  return { success: true, results, isDemo: false };
+  const hasErrors = results.some(r => !r.success);
+  return { 
+    success: !hasErrors, 
+    results, 
+    isDemo: false,
+    error: hasErrors ? "Algunos productos no se guardaron correctamente" : undefined
+  };
 }
