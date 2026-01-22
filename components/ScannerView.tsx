@@ -293,10 +293,10 @@ export function ScannerView() {
         </div>
       </div>
 
-      {/* Error message */}
+      {/* Error message - con espacio para el menú inferior */}
       {error && !showCamera && (
-        <div className="mx-4 p-4 bg-red-500/20 border border-red-500/30 rounded-xl">
-          <p className="text-red-400 text-center">{error}</p>
+        <div className="mx-4 mb-28 p-4 bg-red-500/20 border border-red-500/30 rounded-xl">
+          <p className="text-red-400 text-center text-sm">{error}</p>
         </div>
       )}
 
@@ -367,11 +367,14 @@ export function ScannerView() {
 
       {/* Processing indicator */}
       {isProcessing && !showCamera && (
-        <div className="mx-4 mb-4 p-6 bg-[#13ec37]/10 border border-[#13ec37]/20 rounded-xl text-center">
+        <div className="mx-4 mb-28 p-6 bg-[#13ec37]/10 border border-[#13ec37]/20 rounded-xl text-center">
           <span className="material-symbols-outlined text-4xl text-[#13ec37] animate-spin mb-2">progress_activity</span>
           <p className="text-[#13ec37] font-medium">Procesando imagen con IA...</p>
         </div>
       )}
+
+      {/* Spacer para el menú inferior */}
+      <div className="h-24"></div>
     </div>
   );
 }
