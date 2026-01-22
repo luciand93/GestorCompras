@@ -14,7 +14,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-[#102213]/90 ios-blur border-t border-slate-200 dark:border-white/10 safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a1a0d]/95 ios-blur border-t border-[#13ec37]/10 safe-area-bottom">
       <div className="max-w-md mx-auto flex items-center justify-around py-2 px-6">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -26,15 +26,12 @@ export function BottomNav() {
               className={cn(
                 "flex flex-col items-center gap-1 py-2 px-4 transition-all ios-button",
                 isActive
-                  ? "text-primary"
-                  : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                  ? "text-[#13ec37]"
+                  : "text-[#92c99b]/60 hover:text-[#92c99b]"
               )}
             >
               <span 
-                className={cn(
-                  "material-symbols-outlined text-[28px]",
-                  isActive && "font-bold"
-                )}
+                className="material-symbols-outlined text-[28px]"
                 style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
               >
                 {item.icon}

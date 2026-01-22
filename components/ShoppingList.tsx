@@ -138,8 +138,8 @@ export function ShoppingList() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
-          <span className="material-symbols-outlined text-4xl text-primary animate-pulse">shopping_cart</span>
-          <p className="text-muted-foreground">Cargando...</p>
+          <span className="material-symbols-outlined text-4xl text-[#13ec37] animate-pulse">shopping_cart</span>
+          <p className="text-[#92c99b]">Cargando...</p>
         </div>
       </div>
     );
@@ -149,12 +149,12 @@ export function ShoppingList() {
     <>
       {/* Demo warning */}
       {isDemo && (
-        <div className="mx-4 mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700/50">
+        <div className="mx-4 mb-4 p-4 bg-amber-500/10 rounded-xl border border-amber-500/30">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-amber-600">warning</span>
+            <span className="material-symbols-outlined text-amber-500">warning</span>
             <div>
-              <p className="font-semibold text-amber-700 dark:text-amber-400">Modo Demo</p>
-              <p className="text-sm text-amber-600 dark:text-amber-500">Configura Supabase para guardar datos</p>
+              <p className="font-semibold text-amber-400">Modo Demo</p>
+              <p className="text-sm text-amber-500/80">Configura Supabase para guardar datos</p>
             </div>
           </div>
         </div>
@@ -163,13 +163,13 @@ export function ShoppingList() {
       {/* Quick add chips */}
       {recentProducts.length > 0 && pendingItems.length < 3 && (
         <div className="px-4 mb-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Añadir rápido</p>
+          <p className="text-xs font-semibold text-[#92c99b]/60 uppercase tracking-wider mb-2 px-1">Añadir rápido</p>
           <div className="flex flex-wrap gap-2">
             {recentProducts.slice(0, 5).map((product) => (
               <button
                 key={product}
                 onClick={() => handleQuickAdd(product)}
-                className="px-3 py-1.5 text-sm bg-white dark:bg-card border border-slate-200 dark:border-white/10 rounded-full hover:border-primary hover:text-primary transition-colors ios-button"
+                className="px-3 py-1.5 text-sm bg-[#19331e] border border-[#13ec37]/20 rounded-full hover:border-[#13ec37] hover:text-[#13ec37] transition-colors ios-button text-white"
               >
                 + {product}
               </button>
@@ -184,7 +184,7 @@ export function ShoppingList() {
           <div className="flex justify-end mb-2">
             <button
               onClick={() => setShowClearDialog(true)}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-destructive transition-colors"
+              className="flex items-center gap-1 text-sm text-[#92c99b]/60 hover:text-red-400 transition-colors"
             >
               <span className="material-symbols-outlined text-lg">refresh</span>
               Nueva lista
@@ -196,12 +196,12 @@ export function ShoppingList() {
         {pendingItems.length > 0 && (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pendientes</h3>
-              <span className="text-xs text-muted-foreground">{pendingItems.length} artículos</span>
+              <h3 className="text-xs font-semibold text-[#92c99b]/60 uppercase tracking-wider">Pendientes</h3>
+              <span className="text-xs text-[#92c99b]/40">{pendingItems.length} artículos</span>
             </div>
-            <div className="ios-card divide-y divide-slate-100 dark:divide-white/5">
+            <div className="bg-[#19331e] rounded-xl overflow-hidden border border-[#13ec37]/10 divide-y divide-[#13ec37]/10">
               {pendingItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 p-4 active:bg-slate-50 dark:active:bg-white/5 transition-colors">
+                <div key={item.id} className="flex items-center gap-4 p-4 active:bg-[#13ec37]/5 transition-colors">
                   <input
                     type="checkbox"
                     checked={item.is_checked}
@@ -209,14 +209,14 @@ export function ShoppingList() {
                     className="ios-checkbox"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[17px] font-medium leading-snug truncate">{item.product_name}</p>
+                    <p className="text-[17px] font-medium leading-snug truncate text-white">{item.product_name}</p>
                     {item.quantity > 1 && (
-                      <p className="text-sm text-muted-foreground">{item.quantity} unidades</p>
+                      <p className="text-sm text-[#92c99b]/60">{item.quantity} unidades</p>
                     )}
                   </div>
                   <button
                     onClick={() => handleDeleteItem(item.id)}
-                    className="text-slate-300 hover:text-destructive transition-colors p-1"
+                    className="text-[#92c99b]/30 hover:text-red-400 transition-colors p-1"
                   >
                     <span className="material-symbols-outlined">delete</span>
                   </button>
@@ -230,12 +230,12 @@ export function ShoppingList() {
         {checkedItems.length > 0 && (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Completados</h3>
-              <span className="text-xs text-muted-foreground">{checkedItems.length} artículos</span>
+              <h3 className="text-xs font-semibold text-[#92c99b]/60 uppercase tracking-wider">Completados</h3>
+              <span className="text-xs text-[#92c99b]/40">{checkedItems.length} artículos</span>
             </div>
-            <div className="ios-card divide-y divide-slate-100 dark:divide-white/5">
+            <div className="bg-[#19331e]/50 rounded-xl overflow-hidden border border-[#13ec37]/5 divide-y divide-[#13ec37]/5">
               {checkedItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 p-4 opacity-60">
+                <div key={item.id} className="flex items-center gap-4 p-4 opacity-50">
                   <input
                     type="checkbox"
                     checked={item.is_checked}
@@ -243,14 +243,14 @@ export function ShoppingList() {
                     className="ios-checkbox"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[17px] font-medium line-through text-slate-400 truncate">{item.product_name}</p>
+                    <p className="text-[17px] font-medium line-through text-[#92c99b]/60 truncate">{item.product_name}</p>
                     {item.quantity > 1 && (
-                      <p className="text-sm text-slate-400">{item.quantity} unidades</p>
+                      <p className="text-sm text-[#92c99b]/40">{item.quantity} unidades</p>
                     )}
                   </div>
                   <button
                     onClick={() => handleDeleteItem(item.id)}
-                    className="text-slate-300 p-1"
+                    className="text-[#92c99b]/20 p-1"
                   >
                     <span className="material-symbols-outlined">delete</span>
                   </button>
@@ -262,13 +262,13 @@ export function ShoppingList() {
 
         {/* Empty state */}
         {items.length === 0 && (
-          <div className="ios-card py-16 px-6 text-center">
-            <span className="material-symbols-outlined text-6xl text-muted-foreground/30 mb-4">shopping_bag</span>
-            <p className="text-lg font-semibold text-muted-foreground mb-2">Tu lista está vacía</p>
-            <p className="text-sm text-muted-foreground mb-6">Añade productos para empezar</p>
+          <div className="bg-[#19331e] rounded-xl border border-[#13ec37]/10 py-16 px-6 text-center">
+            <span className="material-symbols-outlined text-6xl text-[#92c99b]/20 mb-4">shopping_bag</span>
+            <p className="text-lg font-semibold text-[#92c99b]/60 mb-2">Tu lista está vacía</p>
+            <p className="text-sm text-[#92c99b]/40 mb-6">Añade productos para empezar</p>
             <button
               onClick={() => setShowAddDialog(true)}
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-bold py-3 px-6 rounded-xl ios-button"
+              className="inline-flex items-center gap-2 bg-[#13ec37] text-[#102213] font-bold py-3 px-6 rounded-xl ios-button"
             >
               <span className="material-symbols-outlined">add</span>
               Añadir producto
@@ -283,7 +283,7 @@ export function ShoppingList() {
           {/* Add button */}
           <button
             onClick={() => setShowAddDialog(true)}
-            className="pointer-events-auto flex items-center gap-2 bg-secondary text-white font-semibold py-3 px-5 rounded-full shadow-lg ios-button"
+            className="pointer-events-auto flex items-center gap-2 bg-[#3b82f6] text-white font-semibold py-3 px-5 rounded-full shadow-lg ios-button"
           >
             <span className="material-symbols-outlined text-xl">add</span>
             <span>Añadir</span>
@@ -293,7 +293,8 @@ export function ShoppingList() {
           {checkedItems.length > 0 && (
             <button
               onClick={handleFinalizePurchase}
-              className="pointer-events-auto w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold text-[17px] py-4 rounded-2xl shadow-xl glow-primary ios-button"
+              className="pointer-events-auto w-full flex items-center justify-center gap-2 bg-[#13ec37] text-[#102213] font-bold text-[17px] py-4 rounded-2xl shadow-xl ios-button"
+              style={{ boxShadow: '0 0 20px rgba(19, 236, 55, 0.3)' }}
             >
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart_checkout</span>
               <span>Finalizar Compra ({checkedItems.length})</span>
@@ -305,33 +306,33 @@ export function ShoppingList() {
       {/* Add Dialog */}
       {showAddDialog && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowAddDialog(false)} />
-          <div className="relative w-full max-w-md bg-white dark:bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl safe-area-bottom">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowAddDialog(false)} />
+          <div className="relative w-full max-w-md bg-[#102213] rounded-t-3xl sm:rounded-3xl shadow-2xl border-t border-[#13ec37]/10 safe-area-bottom">
             <button className="flex h-8 w-full items-center justify-center" onClick={() => setShowAddDialog(false)}>
-              <div className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-white/20"></div>
+              <div className="h-1.5 w-12 rounded-full bg-[#13ec37]/30"></div>
             </button>
             <div className="px-6 pb-6">
-              <h2 className="text-xl font-bold mb-4">Añadir Producto</h2>
+              <h2 className="text-xl font-bold mb-4 text-white">Añadir Producto</h2>
               
               <div className="relative mb-4">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">search</span>
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#92c99b]/60">search</span>
                 <input
                   type="text"
                   value={newItemName}
                   onChange={(e) => handleInputChange(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
                   placeholder="Buscar o escribir producto..."
-                  className="w-full pl-10 pr-4 py-3 text-lg border border-slate-200 dark:border-white/10 rounded-xl bg-slate-50 dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full pl-10 pr-4 py-3 text-lg border border-[#13ec37]/20 rounded-xl bg-[#19331e] text-white placeholder:text-[#92c99b]/40 focus:outline-none focus:ring-2 focus:ring-[#13ec37]"
                   autoFocus
                 />
                 
                 {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-2 bg-white dark:bg-card rounded-xl shadow-lg border border-slate-200 dark:border-white/10 overflow-hidden">
+                  <div className="absolute z-10 w-full mt-2 bg-[#19331e] rounded-xl shadow-lg border border-[#13ec37]/20 overflow-hidden">
                     {suggestions.map((s, i) => (
                       <button
                         key={i}
                         onClick={() => handleSelectSuggestion(s)}
-                        className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-white/5 border-b last:border-b-0 border-slate-100 dark:border-white/5"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-[#13ec37]/10 border-b last:border-b-0 border-[#13ec37]/10"
                       >
                         {s}
                       </button>
@@ -342,13 +343,13 @@ export function ShoppingList() {
 
               {!showSuggestions && recentProducts.length > 0 && !newItemName && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Recientes:</p>
+                  <p className="text-sm font-medium text-[#92c99b]/60 mb-2">Recientes:</p>
                   <div className="flex flex-wrap gap-2">
                     {recentProducts.slice(0, 6).map((p) => (
                       <button
                         key={p}
                         onClick={() => setNewItemName(p)}
-                        className="px-3 py-1.5 text-sm bg-slate-100 dark:bg-white/10 rounded-full"
+                        className="px-3 py-1.5 text-sm bg-[#13ec37]/10 text-white rounded-full"
                       >
                         {p}
                       </button>
@@ -358,11 +359,11 @@ export function ShoppingList() {
               )}
 
               <div className="mb-6">
-                <label className="text-sm font-medium mb-2 block">Cantidad</label>
+                <label className="text-sm font-medium mb-2 block text-[#92c99b]/60">Cantidad</label>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setNewItemQuantity(Math.max(1, newItemQuantity - 1))}
-                    className="w-12 h-12 rounded-xl border border-slate-200 dark:border-white/10 text-xl font-bold hover:bg-slate-50 dark:hover:bg-white/5"
+                    className="w-12 h-12 rounded-xl border border-[#13ec37]/20 text-xl font-bold text-white hover:bg-[#13ec37]/10"
                   >
                     -
                   </button>
@@ -371,11 +372,11 @@ export function ShoppingList() {
                     value={newItemQuantity}
                     onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
                     min="1"
-                    className="flex-1 px-4 py-3 text-lg text-center border border-slate-200 dark:border-white/10 rounded-xl bg-slate-50 dark:bg-white/5"
+                    className="flex-1 px-4 py-3 text-lg text-center border border-[#13ec37]/20 rounded-xl bg-[#19331e] text-white"
                   />
                   <button
                     onClick={() => setNewItemQuantity(newItemQuantity + 1)}
-                    className="w-12 h-12 rounded-xl border border-slate-200 dark:border-white/10 text-xl font-bold hover:bg-slate-50 dark:hover:bg-white/5"
+                    className="w-12 h-12 rounded-xl border border-[#13ec37]/20 text-xl font-bold text-white hover:bg-[#13ec37]/10"
                   >
                     +
                   </button>
@@ -385,14 +386,14 @@ export function ShoppingList() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowAddDialog(false)}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-white/10 font-semibold"
+                  className="flex-1 py-3 rounded-xl border border-[#13ec37]/20 font-semibold text-white"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleAddItem}
                   disabled={!newItemName.trim()}
-                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-50 ios-button"
+                  className="flex-1 py-3 rounded-xl bg-[#13ec37] text-[#102213] font-bold disabled:opacity-50 ios-button"
                 >
                   Añadir
                 </button>
@@ -405,22 +406,22 @@ export function ShoppingList() {
       {/* Clear Dialog */}
       {showClearDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowClearDialog(false)} />
-          <div className="relative w-full max-w-sm bg-white dark:bg-card rounded-2xl shadow-2xl p-6">
-            <h2 className="text-xl font-bold mb-2">¿Vaciar lista?</h2>
-            <p className="text-muted-foreground mb-6">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowClearDialog(false)} />
+          <div className="relative w-full max-w-sm bg-[#102213] rounded-2xl shadow-2xl border border-[#13ec37]/10 p-6">
+            <h2 className="text-xl font-bold mb-2 text-white">¿Vaciar lista?</h2>
+            <p className="text-[#92c99b]/60 mb-6">
               Se eliminarán {items.length} productos. Los precios guardados se mantendrán.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowClearDialog(false)}
-                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-white/10 font-semibold"
+                className="flex-1 py-3 rounded-xl border border-[#13ec37]/20 font-semibold text-white"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleClearAll}
-                className="flex-1 py-3 rounded-xl bg-destructive text-white font-bold ios-button"
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold ios-button"
               >
                 Vaciar
               </button>

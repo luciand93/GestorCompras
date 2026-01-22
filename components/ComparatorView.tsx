@@ -36,45 +36,12 @@ export function ComparatorView() {
       const { data, error } = await getPricesWithHistory();
       
       if (error || !data || data.length === 0) {
-        // Demo data
-        const demoData: ProductGroup[] = [
-          {
-            productName: "Aceite de Oliva Virgen Extra 1L",
-            prices: [
-              { product_name: "Aceite de Oliva Virgen Extra 1L", store: "Supermercado Global", price: 8.45, date: new Date().toISOString() },
-              { product_name: "Aceite de Oliva Virgen Extra 1L", store: "Mercado Central", price: 9.20, date: new Date().toISOString() },
-              { product_name: "Aceite de Oliva Virgen Extra 1L", store: "Hiper Ahorro", price: 9.80, date: new Date().toISOString() },
-              { product_name: "Aceite de Oliva Virgen Extra 1L", store: "Bio Market", price: 10.15, date: new Date().toISOString() },
-            ],
-            bestPrice: { product_name: "Aceite de Oliva Virgen Extra 1L", store: "Supermercado Global", price: 8.45, date: new Date().toISOString() },
-            avgPrice: 9.40
-          },
-          {
-            productName: "Leche Entera 1L",
-            prices: [
-              { product_name: "Leche Entera 1L", store: "Lidl", price: 0.89, date: new Date().toISOString() },
-              { product_name: "Leche Entera 1L", store: "Mercadona", price: 0.95, date: new Date().toISOString() },
-              { product_name: "Leche Entera 1L", store: "Carrefour", price: 1.05, date: new Date().toISOString() },
-            ],
-            bestPrice: { product_name: "Leche Entera 1L", store: "Lidl", price: 0.89, date: new Date().toISOString() },
-            avgPrice: 0.96
-          },
-          {
-            productName: "Pan de Molde",
-            prices: [
-              { product_name: "Pan de Molde", store: "Aldi", price: 1.15, date: new Date().toISOString() },
-              { product_name: "Pan de Molde", store: "Día", price: 1.29, date: new Date().toISOString() },
-              { product_name: "Pan de Molde", store: "Mercadona", price: 1.35, date: new Date().toISOString() },
-            ],
-            bestPrice: { product_name: "Pan de Molde", store: "Aldi", price: 1.15, date: new Date().toISOString() },
-            avgPrice: 1.26
-          }
-        ];
-        setProducts(demoData);
+        // Sin datos - mostrar estado vacío
+        setProducts([]);
       } else {
         // Group by product name
         const grouped: Record<string, PriceData[]> = {};
-        data.forEach(p => {
+        data.forEach((p: PriceData) => {
           if (!grouped[p.product_name]) grouped[p.product_name] = [];
           grouped[p.product_name].push(p);
         });
@@ -119,11 +86,63 @@ export function ComparatorView() {
 
   if (loading) {
     return (
-      <div className="dark min-h-screen bg-[#102213] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#102213] text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <span className="material-symbols-outlined text-4xl text-primary animate-pulse">analytics</span>
+          <span className="material-symbols-outlined text-4xl text-[#13ec37] animate-pulse">analytics</span>
           <p className="text-[#92c99b]">Cargando comparador...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Estado vacío - sin datos
+  if (products.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#102213] text-white pb-24">
+        {/* Header */}
+        <header className="sticky top-0 z-10 bg-[#102213]/80 ios-blur border-b border-white/10">
+          <div className="flex items-center justify-between p-4 max-w-md mx-auto">
+            <h2 className="text-lg font-bold">Comparador</h2>
+          </div>
+        </header>
+
+        <main className="max-w-md mx-auto p-4 mt-8">
+          <div className="rounded-xl bg-[#19331e] border border-[#13ec37]/20 py-16 px-6 text-center">
+            <span className="material-symbols-outlined text-7xl text-[#92c99b]/20 mb-4">analytics</span>
+            <p className="text-xl font-semibold text-white mb-2">Sin datos de precios</p>
+            <p className="text-[#92c99b]/60 mb-8">
+              Escanea tickets de compra para empezar a comparar precios entre tiendas
+            </p>
+            <a
+              href="/scanner"
+              className="inline-flex items-center gap-2 bg-[#13ec37] text-[#102213] font-bold py-4 px-8 rounded-xl ios-button"
+            >
+              <span className="material-symbols-outlined">receipt_long</span>
+              Escanear primer ticket
+            </a>
+          </div>
+          
+          <div className="mt-8 p-4 bg-[#19331e]/50 rounded-xl border border-[#13ec37]/10">
+            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#13ec37]">lightbulb</span>
+              ¿Cómo funciona?
+            </h3>
+            <ol className="space-y-3 text-[#92c99b]/80 text-sm">
+              <li className="flex gap-3">
+                <span className="bg-[#13ec37]/20 text-[#13ec37] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                <span>Escanea tus tickets de compra con la cámara</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="bg-[#13ec37]/20 text-[#13ec37] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                <span>La IA extrae los productos y precios automáticamente</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="bg-[#13ec37]/20 text-[#13ec37] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                <span>Compara precios entre diferentes tiendas</span>
+              </li>
+            </ol>
+          </div>
+        </main>
       </div>
     );
   }
@@ -131,14 +150,13 @@ export function ComparatorView() {
   const currentProduct = selectedProduct || products[0];
 
   return (
-    <div className="dark min-h-screen bg-[#102213] text-white pb-24">
+    <div className="min-h-screen bg-[#102213] text-white pb-24">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-[#102213]/80 ios-blur border-b border-white/10">
         <div className="flex items-center justify-between p-4 max-w-md mx-auto">
           <h2 className="text-lg font-bold">Comparador</h2>
           <div className="flex items-center gap-4">
-            <span className="material-symbols-outlined cursor-pointer">share</span>
-            <span className="material-symbols-outlined cursor-pointer">favorite</span>
+            <span className="material-symbols-outlined cursor-pointer text-[#92c99b]">share</span>
           </div>
         </div>
       </header>
@@ -155,7 +173,7 @@ export function ComparatorView() {
                   onClick={() => setSelectedProduct(product)}
                   className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ios-button ${
                     currentProduct?.productName === product.productName
-                      ? 'bg-primary text-[#102213]'
+                      ? 'bg-[#13ec37] text-[#102213]'
                       : 'bg-[#19331e] text-white border border-white/10'
                   }`}
                 >
@@ -170,16 +188,16 @@ export function ComparatorView() {
           <>
             {/* Product context */}
             <div className="px-4 pt-6 pb-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary/70 mb-1">Analizando precios de:</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#13ec37]/70 mb-1">Analizando precios de:</p>
               <h1 className="text-2xl font-black">{currentProduct.productName}</h1>
             </div>
 
             {/* Best option card */}
             <div className="p-4">
-              <div className="rounded-xl shadow-lg bg-[#19331e] border border-primary/20 overflow-hidden">
-                <div className="relative w-full h-40 bg-gradient-to-br from-primary/30 to-emerald-900 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-7xl text-primary/50">local_offer</span>
-                  <div className="absolute top-3 left-3 bg-primary text-[#102213] text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">
+              <div className="rounded-xl shadow-lg bg-[#19331e] border border-[#13ec37]/20 overflow-hidden">
+                <div className="relative w-full h-32 bg-gradient-to-br from-[#13ec37]/30 to-emerald-900 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-6xl text-[#13ec37]/50">local_offer</span>
+                  <div className="absolute top-3 left-3 bg-[#13ec37] text-[#102213] text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">
                     Mejor Valor
                   </div>
                 </div>
@@ -187,7 +205,7 @@ export function ComparatorView() {
                 <div className="p-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-primary text-sm font-bold uppercase">¡LA MEJOR OPCIÓN!</p>
+                      <p className="text-[#13ec37] text-sm font-bold uppercase">¡LA MEJOR OPCIÓN!</p>
                       <p className="text-xl font-black">{currentProduct.bestPrice.store}</p>
                     </div>
                     <div className="text-right">
@@ -203,7 +221,7 @@ export function ComparatorView() {
                     </div>
                     
                     {currentProduct.prices.length > 1 && (
-                      <button className="flex items-center justify-center h-9 px-4 bg-primary text-[#102213] text-sm font-bold rounded-lg shadow-md ios-button">
+                      <button className="flex items-center justify-center h-9 px-4 bg-[#13ec37] text-[#102213] text-sm font-bold rounded-lg shadow-md ios-button">
                         Ahorras {(currentProduct.avgPrice - currentProduct.bestPrice.price).toFixed(2)}€
                       </button>
                     )}
@@ -217,7 +235,6 @@ export function ComparatorView() {
               <>
                 <div className="flex items-center justify-between px-4 pb-2 pt-4">
                   <h3 className="text-lg font-bold">Otras tiendas</h3>
-                  <span className="text-xs font-bold text-primary cursor-pointer uppercase tracking-widest">Ver más</span>
                 </div>
 
                 <div className="flex flex-col gap-0.5">
@@ -230,7 +247,7 @@ export function ComparatorView() {
                         className="flex items-center gap-4 bg-[#112214] px-4 min-h-[80px] py-3 justify-between border-b border-white/5"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-lg bg-[#234829] flex items-center justify-center text-primary">
+                          <div className="w-14 h-14 rounded-lg bg-[#234829] flex items-center justify-center text-[#13ec37]">
                             <span className="material-symbols-outlined text-2xl">{getStoreIcon(price.store)}</span>
                           </div>
                           <div>
@@ -241,9 +258,6 @@ export function ComparatorView() {
                             </p>
                           </div>
                         </div>
-                        <button className="flex items-center justify-center h-9 px-4 bg-[#234829] text-white text-sm font-bold rounded-lg ios-button active:bg-primary/20">
-                          Añadir
-                        </button>
                       </div>
                     );
                   })}
@@ -252,48 +266,33 @@ export function ComparatorView() {
             )}
 
             {/* Stats card */}
-            <div className="p-4 mt-4">
-              <div className="rounded-xl bg-[#19331e] border border-primary/20 p-4">
-                <h3 className="font-bold mb-3 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">insights</span>
-                  Estadísticas
-                </h3>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-black text-primary">{currentProduct.bestPrice.price.toFixed(2)}€</p>
-                    <p className="text-xs text-[#92c99b]">Mínimo</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black">{currentProduct.avgPrice.toFixed(2)}€</p>
-                    <p className="text-xs text-[#92c99b]">Promedio</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-red-400">
-                      {Math.max(...currentProduct.prices.map(p => p.price)).toFixed(2)}€
-                    </p>
-                    <p className="text-xs text-[#92c99b]">Máximo</p>
+            {currentProduct.prices.length > 1 && (
+              <div className="p-4 mt-4">
+                <div className="rounded-xl bg-[#19331e] border border-[#13ec37]/20 p-4">
+                  <h3 className="font-bold mb-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#13ec37]">insights</span>
+                    Estadísticas
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-black text-[#13ec37]">{currentProduct.bestPrice.price.toFixed(2)}€</p>
+                      <p className="text-xs text-[#92c99b]">Mínimo</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black">{currentProduct.avgPrice.toFixed(2)}€</p>
+                      <p className="text-xs text-[#92c99b]">Promedio</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-red-400">
+                        {Math.max(...currentProduct.prices.map(p => p.price)).toFixed(2)}€
+                      </p>
+                      <p className="text-xs text-[#92c99b]">Máximo</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </>
-        )}
-
-        {products.length === 0 && (
-          <div className="p-4 mt-8">
-            <div className="rounded-xl bg-[#19331e] border border-primary/20 py-16 px-6 text-center">
-              <span className="material-symbols-outlined text-6xl text-[#92c99b]/30 mb-4">analytics</span>
-              <p className="text-lg font-semibold text-[#92c99b] mb-2">Sin datos de precios</p>
-              <p className="text-sm text-[#92c99b]/70 mb-6">Escanea tickets para ver comparaciones</p>
-              <a
-                href="/scanner"
-                className="inline-flex items-center gap-2 bg-primary text-[#102213] font-bold py-3 px-6 rounded-xl ios-button"
-              >
-                <span className="material-symbols-outlined">receipt_long</span>
-                Escanear ticket
-              </a>
-            </div>
-          </div>
         )}
       </main>
     </div>
