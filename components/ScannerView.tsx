@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Camera, Upload, Loader2, CheckCircle2, AlertCircle, X, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { scanReceiptImage, isGeminiConfigured } from "@/utils/ai-scanner";
+import { processImageForOCR, formatFileSize } from "@/utils/image-processor";
 import { saveScannedPrices } from "@/app/actions/scanner";
 import type { ScannedItem } from "@/utils/ai-scanner";
 
@@ -18,6 +19,10 @@ export function ScannerView() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [processingInfo, setProcessingInfo] = useState<string | null>(null);
+
+  // Configuración de procesamiento de imagen
+  const [useInvert, setUseInvert] = useState(false);
 
   // Limpiar stream al desmontar
   useEffect(() => {
@@ -39,12 +44,10 @@ export function ScannerView() {
     const file = e.target.files?.[0];
     if (!file) return;
     await processImage(file);
-    // Limpiar input para permitir seleccionar el mismo archivo
     e.target.value = '';
   };
 
   const processImage = async (file: File | Blob) => {
-    // Verificar si Gemini está configurado
     if (!isGeminiConfigured()) {
       setError("La API de Gemini no está configurada. Contacta al administrador.");
       return;
@@ -54,9 +57,29 @@ export function ScannerView() {
     setError(null);
     setSuccess(false);
     setResult(null);
+    setProcessingInfo("Optimizando imagen...");
 
     try {
-      const scanResult = await scanReceiptImage(file);
+      // Procesar imagen: reducir tamaño, escala de grises, aumentar contraste
+      const processed = await processImageForOCR(file, {
+        maxWidth: 800,
+        maxHeight: 1000,
+        quality: 0.5,
+        grayscale: true,
+        invert: useInvert,
+        contrast: 1.4,
+      });
+
+      setProcessingInfo(
+        `Imagen optimizada: ${formatFileSize(processed.originalSize)} → ${formatFileSize(processed.processedSize)} (${processed.width}x${processed.height})`
+      );
+
+      // Pequeña pausa para mostrar el mensaje
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProcessingInfo("Analizando con IA...");
+
+      // Enviar a Gemini
+      const scanResult = await scanReceiptImage(processed.base64);
       setResult(scanResult.items);
 
       await saveScannedPrices(
@@ -66,11 +89,13 @@ export function ScannerView() {
       );
 
       setSuccess(true);
+      setProcessingInfo(null);
     } catch (err) {
       console.error("Error scanning image:", err);
       setError(
         err instanceof Error ? err.message : "Error al procesar la imagen"
       );
+      setProcessingInfo(null);
     } finally {
       setIsScanning(false);
     }
@@ -79,14 +104,12 @@ export function ScannerView() {
   const startCamera = async () => {
     setCameraError(null);
     
-    // Verificar si el navegador soporta getUserMedia
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraError("Tu navegador no soporta acceso a la cámara. Usa el botón 'Subir Foto' en su lugar.");
       return;
     }
 
     try {
-      // Intentar con cámara trasera primero (mejor para escanear tickets)
       const constraints = {
         video: {
           facingMode: { ideal: "environment" },
@@ -142,19 +165,20 @@ export function ScannerView() {
         }
       },
       "image/jpeg",
-      0.9
+      0.8
     );
   };
 
   return (
-    <div className="space-y-6 mb-24">
+    <div className="space-y-4 mb-24">
       {/* Controles de escaneo */}
       <Card className="shadow-md">
-        <CardContent className="p-6">
+        <CardContent className="p-5">
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center mb-4">
-              Sube o toma una foto de tu ticket de compra para extraer los precios automáticamente
+            <p className="text-sm text-muted-foreground text-center">
+              Sube o toma una foto de tu ticket para extraer precios automáticamente
             </p>
+            
             <div className="flex gap-3">
               <Button
                 onClick={() => fileInputRef.current?.click()}
@@ -183,6 +207,23 @@ export function ScannerView() {
                 )}
               </Button>
             </div>
+
+            {/* Opción de invertir colores */}
+            <div className="flex items-center justify-center gap-2 pt-2 border-t">
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useInvert}
+                  onChange={(e) => setUseInvert(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-muted-foreground">
+                  Invertir colores (para tickets oscuros)
+                </span>
+              </label>
+            </div>
+
             <input
               ref={fileInputRef}
               type="file"
@@ -194,6 +235,11 @@ export function ScannerView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Info de optimización */}
+      <div className="text-xs text-center text-muted-foreground">
+        📷 Las imágenes se optimizan automáticamente (escala de grises, compresión)
+      </div>
 
       {/* Error de cámara */}
       {cameraError && (
@@ -248,10 +294,7 @@ export function ScannerView() {
           <CardContent className="p-6 text-center">
             <Loader2 className="h-10 w-10 animate-spin mx-auto mb-3 text-primary" />
             <p className="text-muted-foreground font-medium">
-              Analizando imagen con IA...
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Esto puede tardar unos segundos
+              {processingInfo || "Procesando..."}
             </p>
           </CardContent>
         </Card>
