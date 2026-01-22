@@ -26,13 +26,12 @@ export function isGeminiConfigured(): boolean {
   return !!apiKey && !!genAI;
 }
 
-// Lista de modelos a probar en orden de preferencia
+// Modelos disponibles que soportan imágenes (actualizados enero 2026)
 const MODELS_TO_TRY = [
-  'gemini-2.0-flash',
-  'gemini-1.5-flash-latest', 
-  'gemini-1.5-flash',
-  'gemini-1.5-pro-latest',
-  'gemini-pro-vision',
+  'gemini-2.5-flash',        // Más nuevo y potente
+  'gemini-2.0-flash',        // Rápido y eficiente
+  'gemini-2.0-flash-001',    // Versión estable
+  'gemini-flash-latest',     // Último disponible
 ];
 
 /**
@@ -82,9 +81,9 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
   let imagePart;
 
   if (typeof imageBase64 === 'string') {
-    const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
-    const mimeMatch = imageBase64.match(/^data:image\/(png|jpeg|jpg|webp);base64,/);
-    const mimeType = mimeMatch ? `image/${mimeMatch[1]}` : 'image/jpeg';
+    const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/, '');
+    const mimeMatch = imageBase64.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/);
+    const mimeType = mimeMatch ? `image/${mimeMatch[1] === 'jpg' ? 'jpeg' : mimeMatch[1]}` : 'image/jpeg';
     
     imagePart = {
       inlineData: {
@@ -94,8 +93,8 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
     };
   } else {
     const arrayBuffer = await imageBase64.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Data = buffer.toString('base64');
+    const uint8Array = new Uint8Array(arrayBuffer);
+    const base64Data = btoa(String.fromCharCode(...uint8Array));
     const mimeType = imageBase64.type || 'image/jpeg';
     
     imagePart = {
@@ -118,6 +117,8 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
       const response = await result.response;
       const text = response.text();
 
+      console.log(`Respuesta del modelo ${modelName}:`, text.substring(0, 200));
+
       // Limpiar la respuesta para extraer solo el JSON
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -131,7 +132,7 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
         throw new Error('La respuesta no tiene el formato esperado');
       }
 
-      console.log(`Éxito con modelo: ${modelName}`);
+      console.log(`Éxito con modelo: ${modelName}, items encontrados: ${parsed.items.length}`);
       return parsed;
     } catch (error: any) {
       console.error(`Error con modelo ${modelName}:`, error.message);
@@ -142,15 +143,22 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON, sin explicaciones.`;
         continue;
       }
       
-      // Si es otro tipo de error, lanzarlo
-      throw error;
+      // Si es un error de parsing JSON, probar el siguiente modelo
+      if (error.message?.includes('JSON') || error.name === 'SyntaxError') {
+        continue;
+      }
+      
+      // Si es otro tipo de error grave, lanzarlo
+      if (error.message?.includes('API key') || error.message?.includes('quota')) {
+        throw error;
+      }
     }
   }
 
   // Si ningún modelo funcionó
   throw new Error(
-    `No se pudo procesar la imagen. Ningún modelo de Gemini está disponible. ` +
-    `Último error: ${lastError?.message || 'Error desconocido'}. ` +
-    `Por favor, verifica tu API key en https://aistudio.google.com`
+    `No se pudo procesar la imagen. ` +
+    `Error: ${lastError?.message || 'Error desconocido'}. ` +
+    `Verifica que la imagen sea clara y contenga un ticket legible.`
   );
 }
