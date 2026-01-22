@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Camera, Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Camera, Upload, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { scanReceiptImage } from "@/utils/ai-scanner";
+import { scanReceiptImage, isGeminiConfigured } from "@/utils/ai-scanner";
 import { saveScannedPrices } from "@/app/actions/scanner";
 import type { ScannedItem } from "@/utils/ai-scanner";
 
@@ -17,26 +17,48 @@ export function ScannerView() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  // Limpiar stream al desmontar
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [stream]);
+
+  // Asignar stream al video cuando cambie
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, showCamera]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     await processImage(file);
+    // Limpiar input para permitir seleccionar el mismo archivo
+    e.target.value = '';
   };
 
   const processImage = async (file: File | Blob) => {
+    // Verificar si Gemini está configurado
+    if (!isGeminiConfigured()) {
+      setError("La API de Gemini no está configurada. Contacta al administrador.");
+      return;
+    }
+
     setIsScanning(true);
     setError(null);
     setSuccess(false);
     setResult(null);
 
     try {
-      // Escanear imagen con Gemini
       const scanResult = await scanReceiptImage(file);
       setResult(scanResult.items);
 
-      // Guardar en Supabase
       await saveScannedPrices(
         scanResult.items,
         scanResult.supermarket,
@@ -54,20 +76,41 @@ export function ScannerView() {
     }
   };
 
-
   const startCamera = async () => {
+    setCameraError(null);
+    
+    // Verificar si el navegador soporta getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError("Tu navegador no soporta acceso a la cámara. Usa el botón 'Subir Foto' en su lugar.");
+      return;
+    }
+
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, // Cámara trasera en móvil
-      });
+      // Intentar con cámara trasera primero (mejor para escanear tickets)
+      const constraints = {
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
       setShowCamera(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accessing camera:", err);
-      setError("No se pudo acceder a la cámara");
+      
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setCameraError("Permiso de cámara denegado. Por favor, permite el acceso a la cámara en la configuración de tu navegador.");
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        setCameraError("No se encontró ninguna cámara en tu dispositivo.");
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        setCameraError("La cámara está siendo usada por otra aplicación.");
+      } else {
+        setCameraError("No se pudo acceder a la cámara. Usa el botón 'Subir Foto' en su lugar.");
+      }
     }
   };
 
@@ -77,32 +120,41 @@ export function ScannerView() {
       setStream(null);
     }
     setShowCamera(false);
+    setCameraError(null);
   };
 
   const capturePhoto = () => {
     if (!videoRef.current) return;
 
+    const video = videoRef.current;
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.drawImage(videoRef.current, 0, 0);
-    canvas.toBlob((blob) => {
-      if (blob) {
-        processImage(blob);
-        stopCamera();
-      }
-    }, "image/jpeg", 0.9);
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          processImage(blob);
+          stopCamera();
+        }
+      },
+      "image/jpeg",
+      0.9
+    );
   };
 
   return (
     <div className="space-y-6 mb-24">
       {/* Controles de escaneo */}
-      <Card>
+      <Card className="shadow-md">
         <CardContent className="p-6">
           <div className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center mb-4">
+              Sube o toma una foto de tu ticket de compra para extraer los precios automáticamente
+            </p>
             <div className="flex gap-3">
               <Button
                 onClick={() => fileInputRef.current?.click()}
@@ -118,14 +170,24 @@ export function ScannerView() {
                 disabled={isScanning}
                 className="flex-1 h-14"
               >
-                <Camera className="mr-2 h-5 w-5" />
-                {showCamera ? "Cerrar Cámara" : "Abrir Cámara"}
+                {showCamera ? (
+                  <>
+                    <X className="mr-2 h-5 w-5" />
+                    Cerrar
+                  </>
+                ) : (
+                  <>
+                    <Camera className="mr-2 h-5 w-5" />
+                    Cámara
+                  </>
+                )}
               </Button>
             </div>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              capture="environment"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -133,26 +195,48 @@ export function ScannerView() {
         </CardContent>
       </Card>
 
+      {/* Error de cámara */}
+      {cameraError && (
+        <Card className="border-amber-500">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-600">Problema con la cámara</p>
+                <p className="text-sm text-muted-foreground">{cameraError}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Vista de cámara */}
       {showCamera && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="relative">
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="relative bg-black">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
-                className="w-full rounded-lg"
+                muted
+                className="w-full aspect-[4/3] object-cover"
               />
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center">
                 <Button
                   onClick={capturePhoto}
                   size="lg"
-                  className="h-16 w-16 rounded-full shadow-lg"
+                  className="h-16 w-16 rounded-full shadow-lg bg-white hover:bg-gray-100"
                 >
-                  <Camera className="h-6 w-6" />
+                  <Camera className="h-8 w-8 text-gray-900" />
                 </Button>
               </div>
+              <button
+                onClick={stopCamera}
+                className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white"
+              >
+                <X className="h-6 w-6" />
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -162,9 +246,12 @@ export function ScannerView() {
       {isScanning && (
         <Card>
           <CardContent className="p-6 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
-            <p className="text-muted-foreground">
-              Procesando imagen con IA...
+            <Loader2 className="h-10 w-10 animate-spin mx-auto mb-3 text-primary" />
+            <p className="text-muted-foreground font-medium">
+              Analizando imagen con IA...
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Esto puede tardar unos segundos
             </p>
           </CardContent>
         </Card>
@@ -192,7 +279,7 @@ export function ScannerView() {
             <div className="flex items-start gap-3 mb-4">
               <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-green-500">
+                <p className="font-medium text-green-600">
                   ¡Escaneo completado!
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -204,7 +291,7 @@ export function ScannerView() {
               {result.map((item, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center p-3 bg-muted rounded-md"
+                  className="flex justify-between items-center p-3 bg-muted rounded-lg"
                 >
                   <div>
                     <p className="font-medium">{item.name}</p>
@@ -214,7 +301,7 @@ export function ScannerView() {
                       </p>
                     )}
                   </div>
-                  <p className="font-semibold text-lg">
+                  <p className="font-bold text-lg text-green-600">
                     {item.price.toFixed(2)}€
                   </p>
                 </div>

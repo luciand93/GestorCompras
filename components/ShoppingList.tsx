@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Check, Trash2, ShoppingBag, AlertTriangle } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Plus, Check, Trash2, ShoppingBag, AlertTriangle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ import {
   deleteItem,
   clearCheckedItems,
 } from "@/app/actions/shopping-list";
+import { searchProducts, getRecentProducts } from "@/app/actions/products";
 import type { ShoppingListItem } from "@/lib/supabase";
 
 export function ShoppingList() {
@@ -22,6 +23,9 @@ export function ShoppingList() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemQuantity, setNewItemQuantity] = useState(1);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [recentProducts, setRecentProducts] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const loadItems = async () => {
     setLoading(true);
@@ -33,9 +37,49 @@ export function ShoppingList() {
     setLoading(false);
   };
 
+  const loadRecentProducts = async () => {
+    const recent = await getRecentProducts();
+    setRecentProducts(recent);
+  };
+
   useEffect(() => {
     loadItems();
+    loadRecentProducts();
   }, []);
+
+  // Debounce para búsqueda
+  const debounce = (func: Function, wait: number) => {
+    let timeout: NodeJS.Timeout;
+    return (...args: any[]) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+
+  const searchForSuggestions = useCallback(
+    debounce(async (query: string) => {
+      if (query.length >= 2) {
+        const results = await searchProducts(query);
+        setSuggestions(results);
+        setShowSuggestions(true);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300),
+    []
+  );
+
+  const handleInputChange = (value: string) => {
+    setNewItemName(value);
+    searchForSuggestions(value);
+  };
+
+  const handleSelectSuggestion = (name: string) => {
+    setNewItemName(name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   const handleAddItem = async () => {
     if (!newItemName.trim()) return;
@@ -44,13 +88,14 @@ export function ShoppingList() {
     if (!error) {
       setNewItemName("");
       setNewItemQuantity(1);
+      setSuggestions([]);
       setShowAddDialog(false);
       await loadItems();
+      await loadRecentProducts();
     }
   };
 
   const handleToggleChecked = async (id: string, currentChecked: boolean) => {
-    // Actualización optimista para mejor UX
     setItems(items.map(item => 
       item.id === id ? { ...item, is_checked: !currentChecked } : item
     ));
@@ -61,7 +106,6 @@ export function ShoppingList() {
   };
 
   const handleDeleteItem = async (id: string) => {
-    // Actualización optimista
     setItems(items.filter(item => item.id !== id));
     await deleteItem(id);
     if (!isDemo) {
@@ -78,6 +122,13 @@ export function ShoppingList() {
         await loadItems();
       }
       window.location.href = "/scanner";
+    }
+  };
+
+  const handleQuickAdd = async (productName: string) => {
+    const { error } = await addToShoppingList(productName, 1);
+    if (!error) {
+      await loadItems();
     }
   };
 
@@ -111,11 +162,31 @@ export function ShoppingList() {
         </Card>
       )}
 
-      <div className="space-y-4 mb-24">
+      {/* Productos recientes para añadir rápido */}
+      {recentProducts.length > 0 && pendingItems.length < 3 && (
+        <Card className="mb-4 bg-muted/30">
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Añadir rápido:</p>
+            <div className="flex flex-wrap gap-2">
+              {recentProducts.slice(0, 6).map((product) => (
+                <button
+                  key={product}
+                  onClick={() => handleQuickAdd(product)}
+                  className="px-3 py-1.5 text-sm bg-background border rounded-full hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  + {product}
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-4 mb-32">
         {/* Items pendientes */}
         {pendingItems.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-3">Pendientes</h2>
+            <h2 className="text-lg font-semibold mb-3">Pendientes ({pendingItems.length})</h2>
             <div className="space-y-2">
               {pendingItems.map((item) => (
                 <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
@@ -196,16 +267,20 @@ export function ShoppingList() {
               <p className="text-lg font-medium text-muted-foreground mb-2">
                 Tu lista está vacía
               </p>
-              <p className="text-sm text-muted-foreground">
-                Pulsa el botón + para añadir productos
+              <p className="text-sm text-muted-foreground mb-4">
+                Pulsa el botón para añadir productos
               </p>
+              <Button onClick={() => setShowAddDialog(true)} size="lg">
+                <Plus className="mr-2 h-5 w-5" />
+                Añadir producto
+              </Button>
             </CardContent>
           </Card>
         )}
 
         {/* Botón Finalizar Compra */}
         {checkedItems.length > 0 && (
-          <div className="fixed bottom-24 left-4 right-20 z-40">
+          <div className="fixed bottom-24 left-4 right-24 z-40">
             <Button
               onClick={handleFinalizePurchase}
               className="w-full h-14 text-lg shadow-lg bg-green-600 hover:bg-green-700"
@@ -218,46 +293,106 @@ export function ShoppingList() {
         )}
       </div>
 
-      {/* Botón flotante para añadir */}
-      <Button
+      {/* Botón flotante para añadir - MEJORADO */}
+      <button
         onClick={() => setShowAddDialog(true)}
-        size="lg"
-        className="fixed bottom-24 right-4 h-16 w-16 rounded-full shadow-xl z-40 text-2xl"
+        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-5 py-4 rounded-full shadow-xl hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
       >
-        <Plus className="h-8 w-8" />
-      </Button>
+        <Plus className="h-6 w-6" />
+        <span className="font-semibold">Añadir</span>
+      </button>
 
-      {/* Dialog para añadir item */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      {/* Dialog para añadir item - CON AUTOCOMPLETADO */}
+      <Dialog open={showAddDialog} onOpenChange={(open) => {
+        setShowAddDialog(open);
+        if (!open) {
+          setNewItemName("");
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-xl">Añadir Producto</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
+            <div className="relative">
               <label className="text-sm font-medium mb-2 block">
                 Nombre del producto
               </label>
-              <input
-                type="text"
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                placeholder="Ej: Aceite de oliva"
-                className="w-full px-4 py-3 text-lg border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                autoFocus
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={newItemName}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onFocus={() => newItemName.length >= 2 && setShowSuggestions(true)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                  placeholder="Buscar o escribir producto..."
+                  className="w-full pl-10 pr-4 py-3 text-lg border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  autoFocus
+                />
+              </div>
+              
+              {/* Sugerencias */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-background border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSelectSuggestion(suggestion)}
+                      className="w-full px-4 py-3 text-left hover:bg-muted transition-colors border-b last:border-b-0"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Productos recientes en el dialog */}
+            {!showSuggestions && recentProducts.length > 0 && !newItemName && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Recientes:</p>
+                <div className="flex flex-wrap gap-2">
+                  {recentProducts.slice(0, 8).map((product) => (
+                    <button
+                      key={product}
+                      onClick={() => setNewItemName(product)}
+                      className="px-3 py-1.5 text-sm bg-muted rounded-full hover:bg-muted/80 transition-colors"
+                    >
+                      {product}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium mb-2 block">Cantidad</label>
-              <input
-                type="number"
-                value={newItemQuantity}
-                onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
-                min="1"
-                className="w-full px-4 py-3 text-lg border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setNewItemQuantity(Math.max(1, newItemQuantity - 1))}
+                  className="w-12 h-12 rounded-lg border text-xl font-bold hover:bg-muted"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  value={newItemQuantity}
+                  onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
+                  min="1"
+                  className="flex-1 px-4 py-3 text-lg text-center border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <button
+                  onClick={() => setNewItemQuantity(newItemQuantity + 1)}
+                  className="w-12 h-12 rounded-lg border text-xl font-bold hover:bg-muted"
+                >
+                  +
+                </button>
+              </div>
             </div>
+
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={() => setShowAddDialog(false)}
@@ -266,7 +401,12 @@ export function ShoppingList() {
               >
                 Cancelar
               </Button>
-              <Button onClick={handleAddItem} className="flex-1 h-12">
+              <Button 
+                onClick={handleAddItem} 
+                className="flex-1 h-12"
+                disabled={!newItemName.trim()}
+              >
+                <Plus className="mr-2 h-5 w-5" />
                 Añadir
               </Button>
             </div>
