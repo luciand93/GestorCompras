@@ -23,14 +23,10 @@ export function isGeminiConfigured(): boolean {
   return !!apiKey && !!genAI;
 }
 
-// Modelos disponibles que soportan imágenes (verificados)
-// https://ai.google.dev/models/gemini
-const MODELS_TO_TRY = [
-  'gemini-1.5-flash',           // Modelo principal flash
-  'gemini-1.5-flash-latest',    // Alias a la última versión
-  'gemini-1.5-pro',             // Modelo pro (más capacidad)
-  'gemini-1.5-pro-latest',      // Alias pro
-  'gemini-pro-vision',          // Modelo vision legacy
+// Modelos Gemini 1.5 que soportan visión (verificados enero 2026)
+const VISION_MODELS = [
+  'gemini-1.5-flash',
+  'gemini-1.5-pro',
 ];
 
 /**
@@ -59,10 +55,10 @@ Responde ÚNICAMENTE con un JSON válido en este formato exacto:
 }
 
 REGLAS:
-- Solo JSON, sin markdown, sin explicaciones
+- Solo JSON, sin markdown, sin explicaciones, sin \`\`\`
 - Precios como números decimales (usa punto, no coma)
 - Si no identificas la tienda, usa "Tienda"
-- Extrae TODOS los productos visibles`;
+- Extrae TODOS los productos visibles con sus precios`;
 
   // Preparar la imagen
   const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/, '');
@@ -76,23 +72,30 @@ REGLAS:
     },
   };
 
-  // Intentar con diferentes modelos
+  // Intentar con los modelos disponibles
   let lastError: Error | null = null;
 
-  for (const modelName of MODELS_TO_TRY) {
+  for (const modelName of VISION_MODELS) {
     try {
-      console.log(`Intentando con modelo: ${modelName}`);
+      console.log(`Probando modelo: ${modelName}`);
       const model = genAI.getGenerativeModel({ model: modelName });
       
       const result = await model.generateContent([prompt, imagePart]);
       const response = await result.response;
       const text = response.text();
 
-      console.log(`Respuesta de ${modelName}:`, text.substring(0, 300));
+      console.log(`Respuesta de ${modelName}:`, text.substring(0, 500));
 
-      // Limpiar la respuesta para extraer solo el JSON
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      // Limpiar la respuesta - quitar markdown si existe
+      let cleanText = text
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .trim();
+
+      // Extraer JSON
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        console.error('No se encontró JSON en:', cleanText);
         throw new Error('No se pudo extraer JSON de la respuesta');
       }
 
@@ -103,51 +106,68 @@ REGLAS:
       const store = parsed.store || parsed.supermarket || 'Tienda';
       
       if (!Array.isArray(products) || products.length === 0) {
-        throw new Error('No se encontraron productos');
+        throw new Error('No se encontraron productos en el ticket');
       }
 
-      const prices: ScannedPrice[] = products.map((p: any) => ({
-        productName: p.name || p.product || p.nombre || 'Producto',
-        price: typeof p.price === 'number' ? p.price : parseFloat(String(p.price || p.precio || 0).replace(',', '.')),
-        store: store
-      })).filter((p: ScannedPrice) => p.price > 0);
+      const prices: ScannedPrice[] = products
+        .map((p: any) => ({
+          productName: p.name || p.product || p.nombre || 'Producto',
+          price: typeof p.price === 'number' ? p.price : parseFloat(String(p.price || p.precio || 0).replace(',', '.')),
+          store: store
+        }))
+        .filter((p: ScannedPrice) => p.price > 0 && p.productName !== 'Producto');
 
-      console.log(`Éxito con ${modelName}: ${prices.length} productos`);
+      if (prices.length === 0) {
+        throw new Error('No se detectaron productos con precios válidos');
+      }
+
+      console.log(`✓ Éxito con ${modelName}: ${prices.length} productos detectados`);
       
       return { prices };
+      
     } catch (error: any) {
-      console.error(`Error con ${modelName}:`, error.message);
+      console.error(`✗ Error con ${modelName}:`, error.message);
       lastError = error;
       
-      // Si es error 404/not found, probar siguiente modelo
+      // Si es error de modelo no encontrado, probar siguiente
       if (error.message?.includes('404') || error.message?.includes('not found')) {
         continue;
       }
       
-      // Si es error de cuota, probar siguiente modelo
+      // Si es error de cuota, probar siguiente
       if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('exceeded')) {
         continue;
       }
       
       // Si es error de parsing, probar siguiente
-      if (error.name === 'SyntaxError') {
+      if (error.name === 'SyntaxError' || error.message?.includes('JSON')) {
         continue;
       }
+      
+      // Otros errores, seguir probando
+      continue;
     }
   }
 
-  // Verificar tipo de error
+  // Analizar el último error
   const errorMsg = lastError?.message || 'Error desconocido';
   
-  if (errorMsg.includes('429') || errorMsg.includes('quota')) {
+  if (errorMsg.includes('429') || errorMsg.includes('quota') || errorMsg.includes('exceeded')) {
     return {
       prices: [],
-      error: 'Límite de API alcanzado. Espera unos minutos o configura facturación en Google Cloud.'
+      error: 'Has alcanzado el límite de uso de la API. Espera unos minutos o configura facturación en Google Cloud.'
+    };
+  }
+  
+  if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+    return {
+      prices: [],
+      error: 'Error de configuración de API. Verifica tu API key de Gemini en Google AI Studio.'
     };
   }
 
   return {
     prices: [],
-    error: `No se pudo procesar: ${errorMsg}`
+    error: `No se pudo procesar el ticket. ${errorMsg.includes('JSON') ? 'Intenta con una foto más clara del ticket.' : errorMsg}`
   };
 }
