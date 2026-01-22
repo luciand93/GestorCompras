@@ -305,14 +305,16 @@ export function ShoppingList() {
 
       {/* Add Dialog */}
       {showAddDialog && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowAddDialog(false)} />
-          <div className="relative w-full max-w-md bg-[#102213] rounded-t-3xl sm:rounded-3xl shadow-2xl border-t border-[#13ec37]/10 safe-area-bottom">
-            <button className="flex h-8 w-full items-center justify-center" onClick={() => setShowAddDialog(false)}>
-              <div className="h-1.5 w-12 rounded-full bg-[#13ec37]/30"></div>
-            </button>
-            <div className="px-6 pb-6">
-              <h2 className="text-xl font-bold mb-4 text-white">Añadir Producto</h2>
+          <div className="relative w-full max-w-md bg-[#102213] rounded-2xl shadow-2xl border border-[#13ec37]/20 max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-[#102213] p-4 border-b border-[#13ec37]/10 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">Añadir Producto</h2>
+              <button onClick={() => setShowAddDialog(false)} className="text-[#92c99b] p-1">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-4">
               
               <div className="relative mb-4">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#92c99b]/60">search</span>
@@ -383,21 +385,16 @@ export function ShoppingList() {
                 </div>
               </div>
 
-              <div className="flex gap-3 mb-8">
-                <button
-                  onClick={() => setShowAddDialog(false)}
-                  className="flex-1 py-4 rounded-xl border border-[#13ec37]/20 font-semibold text-white"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAddItem}
-                  disabled={!newItemName.trim()}
-                  className="flex-1 py-4 rounded-xl bg-[#13ec37] text-[#102213] font-bold disabled:opacity-50 ios-button"
-                >
-                  Añadir
-                </button>
-              </div>
+              {/* Botón grande y visible */}
+              <button
+                onClick={handleAddItem}
+                disabled={!newItemName.trim()}
+                className="w-full py-4 rounded-xl bg-[#13ec37] text-[#102213] font-bold text-lg disabled:opacity-50 ios-button shadow-lg flex items-center justify-center gap-2"
+                style={{ boxShadow: '0 0 20px rgba(19, 236, 55, 0.3)' }}
+              >
+                <span className="material-symbols-outlined">add_circle</span>
+                Añadir a la lista
+              </button>
             </div>
           </div>
         </div>

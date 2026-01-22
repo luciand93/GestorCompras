@@ -3,8 +3,8 @@ import "./globals.css";
 import { ClientLayout } from "@/components/ClientLayout";
 
 export const metadata: Metadata = {
-  title: "Smart Shopping PWA",
-  description: "Gestor inteligente de compras con IA",
+  title: "MiViis - Lista de Compras",
+  description: "Lista de compras inteligente para Rosa & Luciano 💚",
   manifest: "/manifest.json",
 };
 
