@@ -8,6 +8,7 @@ const navItems = [
   { href: "/", icon: "list_alt", label: "Listas" },
   { href: "/scanner", icon: "receipt_long", label: "Escáner" },
   { href: "/comparator", icon: "analytics", label: "Comparar" },
+  { href: "/supermarkets", icon: "store", label: "Super" },
 ];
 
 export function BottomNav() {
