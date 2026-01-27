@@ -67,17 +67,25 @@ export async function getProductsBySupermarket(
   }
 
   // Por cada product_id quedarnos solo el registro más reciente
+  // Supabase devuelve products como objeto o como array según la relación
   const byProduct = new Map<string, ProductAtSupermarket>();
   for (const r of rows || []) {
-    const pid = (r as { product_id: string }).product_id;
+    const row = r as unknown as {
+      product_id: string;
+      price: number;
+      date_recorded: string;
+      products?: { name: string } | { name: string }[] | null;
+    };
+    const pid = row.product_id;
     if (byProduct.has(pid)) continue;
-    const products = (r as { products: { name: string } | null }).products;
-    const name = products?.name ?? "Producto";
+    const p = row.products;
+    const name =
+      (Array.isArray(p) ? p[0]?.name : p?.name) ?? "Producto";
     byProduct.set(pid, {
       product_id: pid,
       product_name: name,
-      last_price: Number((r as { price: number }).price),
-      last_date: (r as { date_recorded: string }).date_recorded,
+      last_price: Number(row.price),
+      last_date: row.date_recorded,
       count_records: 1,
     });
   }
