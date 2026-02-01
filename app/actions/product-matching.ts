@@ -224,24 +224,34 @@ function normalizeProductName(name: string): string {
     .trim();
 }
 
+// Palabras raíz para vincular variantes (leche entera X, leche semidesnatada Y → Leche)
+const PRODUCT_ROOTS = ["leche", "aceite", "pan", "arroz", "cafe", "azucar", "agua", "yogur", "queso", "mantequilla", "huevo", "tomate", "cebolla", "pasta", "harina", "sal", "vinagre", "jabon", "papel", "detergente"];
+
 function calculateSimilarity(search: string, target: string, searchWords: string[]): number {
   // Coincidencia exacta
   if (search === target) return 1;
-  
-  // Uno contiene al otro
-  if (target.includes(search) || search.includes(target)) return 0.8;
-  
+
+  // Uno contiene al otro (ej: "leche entera hacendado" incluye "leche")
+  if (target.includes(search) || search.includes(target)) return 0.85;
+
   // Contar palabras que coinciden
-  const targetWords = target.split(' ');
+  const targetWords = target.split(" ");
   let matchingWords = 0;
-  
-  searchWords.forEach(sw => {
-    if (targetWords.some(tw => tw.includes(sw) || sw.includes(tw))) {
+  searchWords.forEach((sw) => {
+    if (targetWords.some((tw) => tw.includes(sw) || sw.includes(tw))) {
       matchingWords++;
     }
   });
-  
+
   if (searchWords.length === 0) return 0;
-  
-  return matchingWords / Math.max(searchWords.length, targetWords.length);
+  let score = matchingWords / Math.max(searchWords.length, targetWords.length);
+
+  // Boost: si ambos comparten una raíz de producto (leche, aceite...)
+  const searchRoot = PRODUCT_ROOTS.find((r) => search.includes(r));
+  const targetRoot = PRODUCT_ROOTS.find((r) => target.includes(r));
+  if (searchRoot && targetRoot && searchRoot === targetRoot) {
+    score = Math.max(score, 0.75); // Garantiza sugerencia para "Leche" vs "Leche entera Puleva"
+  }
+
+  return score;
 }

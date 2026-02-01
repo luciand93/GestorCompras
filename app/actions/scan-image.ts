@@ -40,9 +40,14 @@ export async function scanImageOnServer(imageBase64: string): Promise<ScanResult
 
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  const prompt = `Analiza este ticket de compra. Responde SOLO con JSON:
-{"store":"nombre","products":[{"name":"producto","price":1.23}]}
-Sin markdown, sin explicaciones. Precios con punto decimal.`;
+  const prompt = `Analiza este ticket de compra. Extrae el nombre del supermercado/tienda (ej: Mercadona, Lidl, Carrefour, Dia, Aldi, Eroski, Consum, etc.) y los productos con precios.
+Responde SOLO con JSON:
+{"store":"Nombre exacto del supermercado","products":[{"name":"producto tal cual","price":1.23}]}
+
+Reglas:
+- "store": nombre del supermercado o tienda. Si aparece en el ticket, úsalo exacto. Si no lo ves, pon "Desconocido".
+- Precios con punto decimal.
+- Sin markdown, sin explicaciones.`;
 
   // Preparar imagen
   const base64Data = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');

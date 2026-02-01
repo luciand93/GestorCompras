@@ -59,26 +59,41 @@ export async function compareShoppingList(): Promise<ComparisonResult> {
     for (const item of shoppingList) {
       const productName = item.product_name.toLowerCase();
       
-      // Buscar producto por nombre o alias
+      // Buscar producto por nombre, alias o palabra clave (ej. "leche entera" → "Leche")
+      let productIds: string[] = [];
       const { data: products } = await supabase
         .from("products")
         .select("id, name")
-        .or(`name.ilike.%${productName}%`);
+        .ilike("name", `%${productName}%`);
+      if (products?.length) productIds = products.map((p) => p.id);
 
-      let productIds: string[] = [];
-      
-      if (products && products.length > 0) {
-        productIds = products.map(p => p.id);
-      }
-
-      // También buscar por aliases
       const { data: aliases } = await supabase
         .from("product_aliases")
         .select("product_id")
         .ilike("alias_name", `%${productName}%`);
+      if (aliases?.length) {
+        productIds = [...new Set([...productIds, ...aliases.map((a) => a.product_id)])];
+      }
 
-      if (aliases) {
-        productIds = [...new Set([...productIds, ...aliases.map(a => a.product_id)])];
+      // Si no hay match, probar con la primera palabra (ej. "leche entera" → buscar "leche")
+      if (productIds.length === 0) {
+        const firstWord = productName.split(/\s+/)[0];
+        if (firstWord && firstWord.length > 2) {
+          const { data: productsByWord } = await supabase
+            .from("products")
+            .select("id")
+            .ilike("name", `%${firstWord}%`);
+          if (productsByWord?.length) {
+            productIds = productsByWord.map((p) => p.id);
+          }
+          const { data: aliasesByWord } = await supabase
+            .from("product_aliases")
+            .select("product_id")
+            .ilike("alias_name", `%${firstWord}%`);
+          if (aliasesByWord?.length) {
+            productIds = [...new Set([...productIds, ...aliasesByWord.map((a) => a.product_id)])];
+          }
+        }
       }
 
       if (productIds.length === 0) {

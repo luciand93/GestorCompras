@@ -178,14 +178,26 @@ export function ScannerView() {
         
         setScannedItems(itemsWithMatches);
         setShowResults(true);
-        
-        // Si la tienda no está clara, mostrar selector
-        const detectedStore = result.prices[0]?.store || '';
-        if (!detectedStore || detectedStore === 'Tienda' || detectedStore.toLowerCase().includes('desconocid')) {
-          setShowStoreSelector(true);
-          await loadStores();
-        } else {
+
+        const stores = await getStores();
+        const detectedStore = (result.prices[0]?.store || "").trim();
+        const isValidStore =
+          detectedStore &&
+          detectedStore !== "Tienda" &&
+          !detectedStore.toLowerCase().includes("desconocid");
+
+        setAvailableStores(
+          isValidStore && !stores.includes(detectedStore)
+            ? [detectedStore, ...stores]
+            : stores
+        );
+
+        if (isValidStore) {
           setSelectedStore(detectedStore);
+          setShowStoreSelector(false);
+        } else {
+          setSelectedStore("");
+          setShowStoreSelector(true); // Obligatorio: abrir selector
         }
       } else {
         setError("No se detectaron productos. Intenta con mejor iluminación.");
@@ -385,14 +397,25 @@ export function ScannerView() {
               </div>
             </div>
 
-            {/* Tienda */}
-            <button 
+            {/* Supermercado - Obligatorio */}
+            <button
               onClick={() => setShowStoreSelector(true)}
-              className="w-full mb-4 p-3 rounded-xl bg-[#19331e] border border-[#13ec37]/20 flex items-center justify-between"
+              className={`w-full mb-4 p-3 rounded-xl flex items-center justify-between ios-button ${
+                selectedStore
+                  ? "bg-[#19331e] border border-[#13ec37]/20"
+                  : "bg-amber-500/10 border-2 border-amber-500/50"
+              }`}
             >
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#13ec37]">store</span>
-                <span className="text-sm">{selectedStore || 'Seleccionar tienda'}</span>
+                <span className={`text-sm ${selectedStore ? "text-white" : "text-amber-400"}`}>
+                  {selectedStore || "Requerido: Seleccionar supermercado"}
+                </span>
+                {!selectedStore && (
+                  <span className="text-[10px] bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded uppercase">
+                    Obligatorio
+                  </span>
+                )}
               </div>
               <span className="material-symbols-outlined text-[#92c99b]">chevron_right</span>
             </button>
@@ -448,9 +471,13 @@ export function ScannerView() {
 
             <button
               onClick={handleSaveToDatabase}
-              disabled={savedSuccess}
+              disabled={savedSuccess || !selectedStore}
               className={`w-full mt-4 font-bold py-3 rounded-xl ios-button ${
-                savedSuccess ? 'bg-[#92c99b] text-[#102213]' : 'bg-[#13ec37] text-[#102213] shadow-lg'
+                savedSuccess
+                  ? "bg-[#92c99b] text-[#102213]"
+                  : selectedStore
+                    ? "bg-[#13ec37] text-[#102213] shadow-lg"
+                    : "bg-[#92c99b]/30 text-[#92c99b]/60 cursor-not-allowed"
               }`}
             >
               {savedSuccess ? (
@@ -458,8 +485,10 @@ export function ScannerView() {
                   <span className="material-symbols-outlined">check_circle</span>
                   ¡Guardado!
                 </span>
+              ) : !selectedStore ? (
+                "Selecciona un supermercado para guardar"
               ) : (
-                'Guardar precios'
+                "Guardar precios"
               )}
             </button>
           </div>
@@ -477,7 +506,10 @@ export function ScannerView() {
               <div className="h-1.5 w-12 rounded-full bg-[#13ec37]/30"></div>
             </button>
             <div className="px-6 pb-6 max-h-[60vh] overflow-y-auto">
-              <h2 className="text-lg font-bold mb-4">Seleccionar Tienda</h2>
+              <h2 className="text-lg font-bold mb-1">Supermercado (obligatorio)</h2>
+              <p className="text-sm text-[#92c99b]/80 mb-4">
+                Cambia el propuesto, elige uno existente o añade uno nuevo
+              </p>
               
               <div className="flex gap-2 mb-4">
                 <input
