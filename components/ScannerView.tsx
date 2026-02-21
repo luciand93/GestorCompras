@@ -60,11 +60,6 @@ export function ScannerView() {
       setCameraError(null);
       setError(null);
 
-      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        cameraInputRef.current?.click();
-        return;
-      }
-
       const constraints = {
         video: {
           facingMode: 'environment',
@@ -575,7 +570,7 @@ export function ScannerView() {
           </div>
 
           {/* Botón Guardar Flotante */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a150c] via-[#0a150c] to-transparent pb-8 md:pb-4 safe-area-bottom">
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a150c] via-[#0a150c] to-transparent pb-8 md:pb-4 safe-area-bottom flex flex-col gap-3">
             <button
               onClick={handleSaveToDatabase}
               disabled={savedSuccess || !selectedStore}
@@ -603,6 +598,14 @@ export function ScannerView() {
                 </span>
               )}
             </button>
+            {!savedSuccess && (
+              <button
+                onClick={clearResults}
+                className="w-full max-w-md mx-auto font-bold text-sm py-3 text-red-400 bg-red-500/10 rounded-xl active:scale-95 transition-all"
+              >
+                Cancelar y descartar ticket
+              </button>
+            )}
           </div>
         </div>
       )}
