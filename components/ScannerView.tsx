@@ -341,8 +341,8 @@ export function ScannerView() {
       <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
 
-      {/* Floating badge para fotos capturadas y botón procesar */}
-      {capturedImages.length > 0 && !showResults && !isProcessing && (
+      {/* Floating badge para fotos capturadas y botón procesar (solo cuando vemos el estado inactivo, no la camara) */}
+      {capturedImages.length > 0 && !showResults && !isProcessing && !showCamera && (
         <div className="mx-4 mb-4 flex items-center justify-between bg-[#19331e] p-3 rounded-xl border border-[#13ec37]/30 shadow-lg animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#13ec37]">imagesmode</span>
@@ -384,29 +384,49 @@ export function ScannerView() {
                 </div>
               </div>
 
-              <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center gap-8 z-20">
-                <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center rounded-full w-12 h-12 bg-black/50 text-white backdrop-blur-md">
-                  <span className="material-symbols-outlined">photo_library</span>
-                </button>
-
-                <button onClick={capturePhoto} disabled={isProcessing} className="flex flex-col items-center justify-center rounded-full w-20 h-20 bg-[#13ec37]/20 border-4 border-white p-1 backdrop-blur-sm ios-button relative">
-                  <div className={`bg-white rounded-full w-full h-full flex items-center justify-center ${isProcessing ? 'animate-pulse' : ''}`}>
-                    {isProcessing ? (
-                      <span className="material-symbols-outlined text-3xl text-[#102213] animate-spin">progress_activity</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>camera</span>
-                    )}
+              <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center justify-center gap-4 z-20">
+                {/* Visualizador de fotos tomadas */}
+                {capturedImages.length > 0 && (
+                  <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-2 rounded-2xl w-max max-w-[90%] overflow-x-auto">
+                    {capturedImages.map((img, i) => (
+                      <div key={i} className="relative w-12 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-[#13ec37]/50">
+                        <img src={img} alt={`foto ${i}`} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => setCapturedImages(prev => prev.filter((_, index) => index !== i))}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">close</span>
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  {capturedImages.length > 0 && !isProcessing && (
-                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-[#102213]">
-                      {capturedImages.length}
-                    </div>
-                  )}
-                </button>
+                )}
 
-                <button onClick={() => setInvertColors(!invertColors)} className={`flex items-center justify-center rounded-full w-12 h-12 backdrop-blur-md ${invertColors ? 'bg-[#13ec37] text-[#102213]' : 'bg-black/50 text-white'}`}>
-                  <span className="material-symbols-outlined">invert_colors</span>
-                </button>
+                {/* Botones principales de la cámara */}
+                <div className="flex items-center justify-center gap-8">
+                  <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center rounded-full w-12 h-12 bg-black/50 text-white backdrop-blur-md">
+                    <span className="material-symbols-outlined">photo_library</span>
+                  </button>
+
+                  <button onClick={capturePhoto} disabled={isProcessing} className="flex flex-col items-center justify-center rounded-full w-20 h-20 bg-[#13ec37]/20 border-4 border-white p-1 backdrop-blur-sm ios-button relative">
+                    <div className={`bg-white rounded-full w-full h-full flex items-center justify-center ${isProcessing ? 'animate-pulse' : ''}`}>
+                      {isProcessing ? (
+                        <span className="material-symbols-outlined text-3xl text-[#102213] animate-spin">progress_activity</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>camera</span>
+                      )}
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={capturedImages.length > 0 ? processImages : () => setInvertColors(!invertColors)}
+                    className={`flex items-center justify-center rounded-full w-12 h-12 backdrop-blur-md ${capturedImages.length > 0 ? 'bg-[#13ec37] text-[#102213] shadow-[0_0_15px_rgba(19,236,55,0.5)]' : (invertColors ? 'bg-[#13ec37] text-[#102213]' : 'bg-black/50 text-white')}`}
+                  >
+                    <span className="material-symbols-outlined font-bold">
+                      {capturedImages.length > 0 ? 'arrow_forward' : 'invert_colors'}
+                    </span>
+                  </button>
+                </div>
               </div>
             </>
           ) : (
