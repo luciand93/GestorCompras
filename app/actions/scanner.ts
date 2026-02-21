@@ -10,28 +10,30 @@ interface ScannedItemToSave {
   store: string;
   matchedProductId?: string;
   isNewProduct?: boolean;
+  ticketName?: string;
 }
 
 export async function saveScannedPrices(items: ScannedPrice[]) {
   // Convertir al nuevo formato
   const itemsToSave: ScannedItemToSave[] = items.map(item => ({
-    productName: item.productName,
+    productName: item.canonicalName || item.productName,
     price: item.price,
     store: item.store || 'Tienda',
-    isNewProduct: true
+    isNewProduct: true,
+    ticketName: item.productName
   }));
-  
+
   return saveScannedPricesWithMatching(itemsToSave);
 }
 
 export async function saveScannedPricesWithMatching(items: ScannedItemToSave[]) {
   if (!isSupabaseConfigured() || !supabase) {
-    return { 
+    return {
       success: true,
-      results: items.map(item => ({ 
-        success: true, 
+      results: items.map(item => ({
+        success: true,
         item: item.productName,
-        isDemo: true 
+        isDemo: true
       })),
       isDemo: true,
       error: undefined
@@ -48,21 +50,22 @@ export async function saveScannedPricesWithMatching(items: ScannedItemToSave[]) 
       if (item.matchedProductId) {
         // Usar producto existente vinculado
         productId = item.matchedProductId;
-        
-        // Guardar el nombre del ticket como alias
+
+        // Guardar el nombre original del ticket como alias si está disponible
+        const aliasToSave = item.ticketName || item.productName;
         const { data: existingAlias } = await supabase
           .from("product_aliases")
           .select("id")
           .eq("product_id", productId)
-          .eq("alias_name", item.productName)
+          .eq("alias_name", aliasToSave)
           .eq("supermarket_name", item.store)
           .limit(1)
           .single();
 
-        if (!existingAlias) {
+        if (!existingAlias && aliasToSave !== item.productName) {
           await supabase.from("product_aliases").insert({
             product_id: productId,
-            alias_name: item.productName,
+            alias_name: aliasToSave,
             supermarket_name: item.store
           });
         }
@@ -82,7 +85,7 @@ export async function saveScannedPricesWithMatching(items: ScannedItemToSave[]) 
           const { data: existingAlias } = await supabase
             .from("product_aliases")
             .select("product_id")
-            .ilike("alias_name", item.productName)
+            .ilike("alias_name", item.ticketName || item.productName)
             .limit(1)
             .single();
 
@@ -102,6 +105,15 @@ export async function saveScannedPricesWithMatching(items: ScannedItemToSave[]) 
             }
 
             productId = newProduct.id;
+
+            // Guardar el alias inicial
+            if (item.ticketName && item.ticketName !== item.productName) {
+              await supabase.from("product_aliases").insert({
+                product_id: productId,
+                alias_name: item.ticketName,
+                supermarket_name: item.store
+              });
+            }
           }
         }
       }
@@ -131,11 +143,11 @@ export async function saveScannedPricesWithMatching(items: ScannedItemToSave[]) 
 
   revalidatePath("/comparator");
   revalidatePath("/");
-  
+
   const hasErrors = results.some(r => !r.success);
-  return { 
-    success: !hasErrors, 
-    results, 
+  return {
+    success: !hasErrors,
+    results,
     isDemo: false,
     error: hasErrors ? "Algunos productos no se guardaron correctamente" : undefined
   };

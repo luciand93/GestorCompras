@@ -7,6 +7,7 @@ const apiKey = process.env.GEMINI_API_KEY || '';
 
 export interface ScannedPrice {
   productName: string;
+  canonicalName?: string;
   price: number;
   store?: string;
 }
@@ -40,12 +41,14 @@ export async function scanImageOnServer(imageBase64: string): Promise<ScanResult
 
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  const prompt = `Analiza este ticket de compra. Extrae el nombre del supermercado/tienda (ej: Mercadona, Lidl, Carrefour, Dia, Aldi, Eroski, Consum, etc.) y los productos con precios.
-Responde SOLO con JSON:
-{"store":"Nombre exacto del supermercado","products":[{"name":"producto tal cual","price":1.23}]}
+  const prompt = `Analiza este ticket de compra. Extrae el nombre del supermercado/tienda y los productos con precios.
+Para cada producto, deduce también su "artículo madre" o categoría genérica básica. Por ejemplo, si en el ticket pone "Asturiana 1L" o "Leche Semidesnatada", el canonicalName debe ser "Leche". Si pone "Gallo Fideos 500g", el canonicalName es "Fideos".
+Responde SOLO con JSON con este formato exacto:
+{"store":"Nombre exacto del supermercado","products":[{"name":"texto original del ticket","canonicalName":"Articulo Madre Generico","price":1.23}]}
 
 Reglas:
-- "store": nombre del supermercado o tienda. Si aparece en el ticket, úsalo exacto. Si no lo ves, pon "Desconocido".
+- "store": nombre del supermercado o tienda a partir del ticket. Si no lo ves seguro, usa "Desconocido".
+- "canonicalName": nombre genérico y limpio del producto (Leche, Huevos, Pan, Tomate Frito, etc.).
 - Precios con punto decimal.
 - Sin markdown, sin explicaciones.`;
 
@@ -84,6 +87,7 @@ Reglas:
       const prices: ScannedPrice[] = products
         .map((p: any) => ({
           productName: String(p.name || 'Producto').trim(),
+          canonicalName: String(p.canonicalName || p.name || 'Producto').trim(),
           price: parseFloat(String(p.price || 0).replace(',', '.')),
           store
         }))
