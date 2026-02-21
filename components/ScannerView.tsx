@@ -60,12 +60,18 @@ export function ScannerView() {
       setCameraError(null);
       setError(null);
 
-      const constraints = {
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+      // Verificación de seguridad síncrona. Si el usuario accede por HTTP en su red local, 
+      // iOS/Android ocultan navigator.mediaDevices por políticas de seguridad del navegador.
+      // En ese caso, usamos silenciosamente el modo de cámara nativa.
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError("Cámara integrada requiere HTTPS. Usando cámara nativa...");
+        cameraInputRef.current?.click();
+        return;
+      }
+
+      const constraints: MediaStreamConstraints = {
+        video: { facingMode: 'environment' },
+        audio: false
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -73,7 +79,7 @@ export function ScannerView() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        await videoRef.current.play().catch(e => console.error("Play error", e));
       }
 
       setShowCamera(true);
@@ -82,6 +88,9 @@ export function ScannerView() {
       setSavedSuccess(false);
     } catch (err: any) {
       console.error("Error accessing camera:", err);
+      // Fallback a cámara nativa si la cámara integrada es rechazada (por permisos u otro error)
+      const errorMsg = err.name === 'NotAllowedError' ? "Permiso de cámara denegado." : "Cámara integrada no compatible.";
+      setCameraError(`${errorMsg} Abriendo nativa...`);
       cameraInputRef.current?.click();
     }
   };
@@ -338,25 +347,35 @@ export function ScannerView() {
 
       {/* Floating badge para fotos capturadas y botón procesar (solo cuando vemos el estado inactivo, no la camara) */}
       {capturedImages.length > 0 && !showResults && !isProcessing && !showCamera && (
-        <div className="mx-4 mb-4 flex items-center justify-between bg-[#19331e] p-3 rounded-xl border border-[#13ec37]/30 shadow-lg animate-in fade-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#13ec37]">imagesmode</span>
-            <span className="font-bold text-sm text-white">
-              {capturedImages.length} {capturedImages.length === 1 ? 'foto lista' : 'fotos listas'}
-            </span>
-          </div>
-          <div className="flex gap-2">
+        <div className="mx-4 mb-4 flex flex-col gap-3 bg-[#19331e] p-4 rounded-xl border border-[#13ec37]/30 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#13ec37]">imagesmode</span>
+              <span className="font-bold text-sm text-white">
+                {capturedImages.length} {capturedImages.length === 1 ? 'foto lista' : 'fotos listas'}
+              </span>
+            </div>
             <button
               onClick={() => setCapturedImages([])}
-              className="px-3 py-1.5 bg-red-500/20 text-red-500 rounded-lg text-xs font-bold"
+              className="px-3 py-1.5 border border-red-500/30 bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"
             >
-              Borrar
+              Descartar todas
+            </button>
+          </div>
+
+          <div className="flex gap-2 w-full mt-1">
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex-1 py-2.5 bg-[#13ec37]/20 border border-[#13ec37]/50 text-[#13ec37] rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+            >
+              <span className="material-symbols-outlined text-[20px]">add_a_photo</span>
+              Otra foto
             </button>
             <button
               onClick={processImages}
-              className="px-4 py-1.5 bg-[#13ec37] text-[#102213] rounded-lg text-sm font-black flex items-center gap-1 shadow-md shadow-[#13ec37]/20"
+              className="flex-[1.5] py-2.5 bg-[#13ec37] text-[#102213] rounded-xl text-base font-black flex items-center justify-center gap-2 shadow-md shadow-[#13ec37]/20 active:scale-95 transition-transform"
             >
-              Procesar <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              Procesar IA <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
             </button>
           </div>
         </div>
