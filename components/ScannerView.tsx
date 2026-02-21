@@ -432,86 +432,114 @@ export function ScannerView() {
         </div>
       )}
 
-      {/* Results bottom sheet */}
+      {/* Results Full-Screen Modal */}
       {showResults && scannedItems.length > 0 && (
-        <div className="bg-[#102213] rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.5)] border-t border-[#13ec37]/10">
-          <button className="flex h-8 w-full items-center justify-center" onClick={() => setShowResults(!showResults)}>
-            <div className="h-1.5 w-12 rounded-full bg-[#13ec37]/40"></div>
-          </button>
+        <div className="fixed inset-0 z-50 bg-[#102213] flex flex-col">
+          {/* Header */}
+          <header className="sticky top-0 bg-[#0a150c] p-4 border-b border-[#13ec37]/20 flex items-center justify-between z-10 shadow-md">
+            <div>
+              <h2 className="text-xl font-black text-white">Revisar Ticket</h2>
+              <p className="text-[#92c99b] text-xs font-semibold">{scannedItems.length} productos detectados</p>
+            </div>
+            <button onClick={clearResults} className="w-10 h-10 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center active:scale-90 transition-transform">
+              <span className="material-symbols-outlined font-bold">close</span>
+            </button>
+          </header>
 
-          <div className="px-4 pb-6 max-h-[60vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">Productos Detectados</h3>
-              <div className="flex items-center gap-2">
-                <span className="bg-[#13ec37]/20 text-[#13ec37] text-xs font-bold px-2 py-1 rounded">
-                  {scannedItems.length}
-                </span>
-                <button onClick={clearResults} className="text-[#92c99b] p-1">
-                  <span className="material-symbols-outlined text-xl">close</span>
-                </button>
-              </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-32">
+            {/* Supermercado - Obligatorio */}
+            <div className="mt-4 mb-6">
+              <label className="text-xs font-bold text-[#92c99b] uppercase tracking-wider mb-2 block">Establecimiento</label>
+              <button
+                onClick={() => setShowStoreSelector(true)}
+                className={`w-full p-4 rounded-2xl flex items-center justify-between shadow-sm active:scale-[98%] transition-transform ${selectedStore
+                  ? "bg-[#19331e] border border-[#13ec37]/40"
+                  : "bg-amber-500/10 border-2 border-amber-500/50 animate-pulse"
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedStore ? 'bg-[#13ec37]/20' : 'bg-amber-500/20'}`}>
+                    <span className={`material-symbols-outlined ${selectedStore ? 'text-[#13ec37]' : 'text-amber-500'}`}>storefront</span>
+                  </div>
+                  <div className="text-left">
+                    <p className={`font-bold ${selectedStore ? "text-white text-lg" : "text-amber-400 text-base"}`}>
+                      {selectedStore || "Toca para seleccionar..."}
+                    </p>
+                    {!selectedStore && (
+                      <p className="text-[10px] text-amber-500/80 font-bold uppercase mt-0.5">Dato obligatorio</p>
+                    )}
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-[#92c99b]">edit</span>
+              </button>
             </div>
 
-            {/* Supermercado - Obligatorio */}
-            <button
-              onClick={() => setShowStoreSelector(true)}
-              className={`w-full mb-4 p-3 rounded-xl flex items-center justify-between ios-button ${selectedStore
-                ? "bg-[#19331e] border border-[#13ec37]/20"
-                : "bg-amber-500/10 border-2 border-amber-500/50"
-                }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#13ec37]">store</span>
-                <span className={`text-sm ${selectedStore ? "text-white" : "text-amber-400"}`}>
-                  {selectedStore || "Requerido: Seleccionar supermercado"}
-                </span>
-                {!selectedStore && (
-                  <span className="text-[10px] bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded uppercase">
-                    Obligatorio
-                  </span>
-                )}
-              </div>
-              <span className="material-symbols-outlined text-[#92c99b]">chevron_right</span>
-            </button>
-
-            <div className="overflow-x-auto w-full mb-4">
+            <label className="text-xs font-bold text-[#92c99b] uppercase tracking-wider mb-2 block">Productos a guardar</label>
+            <div className="w-full bg-[#0a150c] rounded-2xl border border-[#13ec37]/20 overflow-hidden shadow-lg mb-6">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#13ec37]/20 text-xs text-[#92c99b]">
-                    <th className="py-2 px-1 font-normal w-[35%]">Original Ticket</th>
-                    <th className="py-2 px-1 font-normal w-[35%]">Artíc. Madre</th>
-                    <th className="py-2 px-1 font-normal w-[15%] text-right">Precio</th>
-                    <th className="py-2 px-1 font-normal w-[15%] text-center">Mod</th>
+                  <tr className="bg-[#19331e]/50 text-[10px] text-[#92c99b] uppercase tracking-wider border-b border-[#13ec37]/20">
+                    <th className="py-3 px-3 w-[65%] font-bold">Artículo</th>
+                    <th className="py-3 px-3 w-[25%] font-bold text-right pt-2 pb-2">Precio</th>
+                    <th className="py-3 px-2 w-[10%] text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="text-sm">
                   {scannedItems.map((item, index) => {
                     const displayedMother = item.matchedProductName || item.customName || item.canonicalName || item.productName;
                     return (
-                      <tr key={index} className="border-b border-[#13ec37]/10 last:border-0 hover:bg-[#13ec37]/5 transition-colors">
-                        <td className="py-3 px-1 align-top">
-                          <p className="font-semibold text-xs leading-tight line-clamp-2 text-white/80">{item.productName}</p>
-                        </td>
-                        <td className="py-3 px-1 align-top">
-                          <p className={`text-xs font-bold leading-tight ${item.matchedProductId ? 'text-[#13ec37]' : 'text-amber-400'}`}>
-                            {displayedMother}
-                          </p>
-                          {!item.matchedProductId && (
-                            <span className="text-[9px] bg-amber-400/20 text-amber-300 px-1 rounded uppercase mt-1 inline-block">Nuevo</span>
-                          )}
-                          {item.matchedProductId && (
-                            <span className="text-[9px] bg-[#13ec37]/20 text-[#13ec37] px-1 rounded uppercase mt-1 inline-block">Vinculado</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-1 text-right text-[#13ec37] font-bold align-top">
-                          {item.price.toFixed(2)}€
-                        </td>
-                        <td className="py-3 px-1 text-center align-top">
-                          <button
+                      <tr key={index} className="border-b border-[#13ec37]/10 last:border-0 hover:bg-[#19331e] transition-colors relative">
+                        <td className="py-3 px-3 align-top">
+                          {/* Editable Mother Article trigger */}
+                          <div
                             onClick={() => { setEditingItemIndex(index); setShowProductMatcher(true); }}
-                            className="text-[#92c99b] p-2 bg-[#13ec37]/10 rounded-lg active:scale-95 transition-transform"
+                            className="group cursor-pointer"
                           >
-                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <p className={`text-sm font-black leading-tight truncate ${item.matchedProductId ? 'text-[#13ec37]' : 'text-amber-400'}`}>
+                                {displayedMother}
+                              </p>
+                              <span className="material-symbols-outlined text-[14px] text-white/20 group-hover:text-white/80">edit</span>
+                            </div>
+                            <p className="font-medium text-[11px] leading-tight line-clamp-1 text-white/50">{item.productName}</p>
+                            <div className="mt-1.5 flex gap-1">
+                              {!item.matchedProductId && (
+                                <span className="text-[9px] bg-amber-400/20 border border-amber-400/30 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Nuevo Catálogo</span>
+                              )}
+                              {item.matchedProductId && (
+                                <span className="text-[9px] bg-[#13ec37]/10 border border-[#13ec37]/20 text-[#13ec37] px-1.5 py-0.5 rounded font-bold uppercase">Existente</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-right align-top">
+                          {/* Inline editable price input */}
+                          <div className="flex items-center justify-end">
+                            <input
+                              title="Editar Precio"
+                              type="number"
+                              step="0.01"
+                              value={item.price}
+                              onChange={(e) => {
+                                const newPrice = parseFloat(e.target.value) || 0;
+                                setScannedItems(items => items.map((it, i) => i === index ? { ...it, price: newPrice } : it));
+                              }}
+                              className="w-16 bg-[#19331e] border border-[#13ec37]/30 text-[#13ec37] font-black text-right p-1.5 rounded-lg focus:outline-none focus:border-[#13ec37] focus:ring-1 focus:ring-[#13ec37]"
+                            />
+                            <span className="text-[#13ec37] font-black ml-1">€</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center align-top">
+                          {/* Button to remove item easily */}
+                          <button
+                            title="Eliminar registro"
+                            onClick={() => {
+                              setScannedItems(items => items.filter((_, i) => i !== index));
+                              if (scannedItems.length === 1) clearResults();
+                            }}
+                            className="text-white/20 hover:text-red-500 p-1.5 transition-colors mt-0.5"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
                           </button>
                         </td>
                       </tr>
@@ -519,37 +547,43 @@ export function ScannerView() {
                   })}
                 </tbody>
               </table>
+              <div className="bg-[#19331e] p-4 border-t border-[#13ec37]/20 flex justify-between items-center">
+                <span className="text-[#92c99b] text-sm uppercase font-bold tracking-wider">Total Calculado</span>
+                <span className="text-2xl font-black text-white">{total.toFixed(2)}€</span>
+              </div>
             </div>
+          </div>
 
-            <div className="mt-6 pt-4 border-t border-[#13ec37]/10 flex justify-between items-center">
-              <span className="text-[#92c99b] font-medium">Total</span>
-              <span className="text-xl font-black">{total.toFixed(2)}€</span>
-            </div>
-
+          {/* Botón Guardar Flotante */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a150c] via-[#0a150c] to-transparent pb-8 md:pb-4 safe-area-bottom">
             <button
               onClick={handleSaveToDatabase}
               disabled={savedSuccess || !selectedStore}
-              className={`w-full mt-4 font-bold py-3 rounded-xl ios-button ${savedSuccess
+              className={`w-full max-w-md mx-auto font-black text-lg py-4 rounded-2xl shadow-xl transition-all active:scale-95 ${savedSuccess
                 ? "bg-[#92c99b] text-[#102213]"
                 : selectedStore
-                  ? "bg-[#13ec37] text-[#102213] shadow-lg"
-                  : "bg-[#92c99b]/30 text-[#92c99b]/60 cursor-not-allowed"
+                  ? "bg-[#13ec37] text-[#102213] shadow-[#13ec37]/20"
+                  : "bg-[#92c99b]/10 text-[#92c99b]/30 cursor-not-allowed border-2 border-dashed border-[#92c99b]/20"
                 }`}
             >
               {savedSuccess ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined">check_circle</span>
-                  ¡Guardado!
+                  <span className="material-symbols-outlined font-black">check_circle</span>
+                  ¡Guardado Correctamente!
                 </span>
               ) : !selectedStore ? (
-                "Selecciona un supermercado para guardar"
+                <span className="flex items-center justify-center gap-2 text-sm">
+                  <span className="material-symbols-outlined text-lg">warning</span>
+                  Elige un Supermercado primero
+                </span>
               ) : (
-                "Guardar precios"
+                <span className="flex items-center justify-center gap-2">
+                  Guardar en Base de Datos
+                  <span className="material-symbols-outlined">save</span>
+                </span>
               )}
             </button>
           </div>
-
-          <div className="h-24"></div>
         </div>
       )}
 

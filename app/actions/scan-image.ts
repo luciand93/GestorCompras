@@ -55,6 +55,10 @@ Para cada producto, deduce también su "artículo madre" o categoría genérica 
 - "Gallo Fideos 500g" -> canonicalName: "Fideos"
 - "Pernil Salat" -> canonicalName: "Jamón"
 
+MUY IMPORTANTE - VERIFICACIÓN MATEMÁTICA:
+Antes de devolver el resultado, verifica internamente que la suma de los precios de los artículos individuales coincida aproximadamente con el precio TOTAL del ticket. 
+Si la suma no cuadra, es probable que hayas leído un precio mal. Si es así, vuelve a revisar tus lecturas de precios fila por fila hasta 3 veces antes de entregar la respuesta final.
+
 Responde SOLO con un objeto JSON con este formato exacto y NADA más:
 {"store":"Nombre del supermercado","products":[{"name":"texto original del ticket","canonicalName":"Articulo Madre Generico","price":1.23}]}
 
