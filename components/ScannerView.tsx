@@ -20,9 +20,6 @@ export function ScannerView() {
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [scannedItems, setScannedItems] = useState<ScannedItemWithMatch[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [showCamera, setShowCamera] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [invertColors, setInvertColors] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -36,18 +33,11 @@ export function ScannerView() {
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [showProductMatcher, setShowProductMatcher] = useState(false);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     loadStores();
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
   }, []);
 
   const loadStores = async () => {
@@ -56,73 +46,8 @@ export function ScannerView() {
   };
 
   const startCamera = async () => {
-    try {
-      setCameraError(null);
-      setError(null);
-      setShowResults(false);
-      setScannedItems([]);
-      setSavedSuccess(false);
-
-      // Verificación de seguridad síncrona. Si el usuario accede por HTTP en su red local, 
-      // iOS/Android ocultan navigator.mediaDevices por políticas de seguridad del navegador.
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setShowCamera(true);
-        setCameraError("Estás en una red local HTTP. Usa la cámara nativa.");
-        return;
-      }
-
-      setShowCamera(true); // Abrimos la vista de cámara visualmente
-
-      const constraints: MediaStreamConstraints = {
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(e => console.error("Play error", e));
-      }
-
-    } catch (err: any) {
-      console.error("Error accessing camera:", err);
-      // Fallback a cámara nativa si es rechazada o falla
-      setShowCamera(true);
-      const errorMsg = err.name === 'NotAllowedError' ? "Permiso denegado." : "Cámara web no compatible.";
-      setCameraError(`${errorMsg} Usa la cámara nativa.`);
-    }
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setShowCamera(false);
-  };
-
-  const capturePhoto = async () => {
-    if (!videoRef.current) return;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext("2d");
-
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0);
-      const imageData = canvas.toDataURL("image/jpeg", 0.8);
-      // Agregar la foto a la lista en lugar de procesar inmediatamente
-      setCapturedImages(prev => [...prev, imageData]);
-
-      // Feedback visual rápido
-      videoRef.current.style.opacity = '0.5';
-      setTimeout(() => {
-        if (videoRef.current) videoRef.current.style.opacity = '1';
-      }, 150);
-    }
+    setError(null);
+    cameraInputRef.current?.click();
   };
 
   const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,9 +91,6 @@ export function ScannerView() {
     setSavedSuccess(false);
     setShowResults(false);
 
-    // Detener la cámara si está encendida
-    stopCamera();
-
     try {
       const optimizedImages = await Promise.all(
         capturedImages.map(img =>
@@ -178,7 +100,7 @@ export function ScannerView() {
             quality: 0.4,
             grayscale: true,
             contrast: 1.5,
-            invert: invertColors
+            invert: false
           })
         )
       );
@@ -331,22 +253,19 @@ export function ScannerView() {
           <span>Galería</span>
         </button>
         <button
-          onClick={showCamera ? stopCamera : startCamera}
-          className={`flex-1 flex items-center justify-center gap-2 h-12 px-5 rounded-xl font-bold ios-button ${showCamera
-            ? 'bg-red-500 text-white'
-            : 'bg-[#13ec37] text-[#102213] shadow-lg shadow-[#13ec37]/30'
-            }`}
+          onClick={() => cameraInputRef.current?.click()}
+          className="flex-1 flex items-center justify-center gap-2 h-12 px-5 rounded-xl font-bold ios-button bg-[#13ec37] text-[#102213] shadow-lg shadow-[#13ec37]/30"
         >
-          <span className="material-symbols-outlined">{showCamera ? 'close' : 'photo_camera'}</span>
-          <span>{showCamera ? 'Cerrar' : 'Cámara'}</span>
+          <span className="material-symbols-outlined">photo_camera</span>
+          <span>Cámara</span>
         </button>
       </div>
 
       <input ref={fileInputRef} id="native-gallery-input" type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
       <input ref={cameraInputRef} id="native-camera-input" type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
 
-      {/* Floating badge para fotos capturadas y botón procesar (solo cuando vemos el estado inactivo, no la camara) */}
-      {capturedImages.length > 0 && !showResults && !isProcessing && !showCamera && (
+      {/* Floating badge para fotos capturadas y botón procesar */}
+      {capturedImages.length > 0 && !showResults && !isProcessing && (
         <div className="mx-4 mb-4 flex flex-col gap-3 bg-[#19331e] p-4 rounded-xl border border-[#13ec37]/30 shadow-lg animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -381,104 +300,27 @@ export function ScannerView() {
         </div>
       )}
 
-      {/* Camera viewfinder */}
-      <div className="flex-1 px-4 py-2">
-        <div className="relative h-full min-h-[300px] rounded-3xl overflow-hidden border-2 border-[#13ec37]/20 bg-slate-900">
-          {showCamera ? (
-            <>
-              <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
-
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-64 h-80 border-2 border-dashed border-[#13ec37]/50 rounded-xl relative">
-                  <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-[#13ec37] rounded-tl-md"></div>
-                  <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-[#13ec37] rounded-tr-md"></div>
-                  <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-[#13ec37] rounded-bl-md"></div>
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-[#13ec37] rounded-br-md"></div>
-                  {isProcessing && <div className="scanning-line"></div>}
-                </div>
-              </div>
-
-              <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center justify-center gap-4 z-20">
-                {/* Visualizador de fotos tomadas */}
-                {capturedImages.length > 0 && (
-                  <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-2 rounded-2xl w-max max-w-[90%] overflow-x-auto">
-                    {capturedImages.map((img, i) => (
-                      <div key={i} className="relative w-12 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-[#13ec37]/50">
-                        <img src={img} alt={`foto ${i}`} className="w-full h-full object-cover" />
-                        <button
-                          onClick={() => setCapturedImages(prev => prev.filter((_, index) => index !== i))}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">close</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Botones principales de la cámara */}
-                <div className="flex items-center justify-center gap-8">
-                  <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center rounded-full w-12 h-12 bg-black/50 text-white backdrop-blur-md relative z-30">
-                    <span className="material-symbols-outlined">photo_library</span>
-                  </button>
-
-                  {cameraError ? (
-                    // Botón de fallback para cámara nativa usando un label 100% fiable
-                    <label htmlFor="native-camera-input" className="flex flex-col items-center justify-center rounded-full w-20 h-20 bg-amber-500/20 border-4 border-amber-500 p-1 backdrop-blur-sm ios-button relative cursor-pointer z-30">
-                      <div className="bg-amber-500 rounded-full w-full h-full flex items-center justify-center">
-                        <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>camera</span>
-                      </div>
-                    </label>
-                  ) : (
-                    // Botón de cámara web integrada
-                    <button onClick={capturePhoto} disabled={isProcessing} className="flex flex-col items-center justify-center rounded-full w-20 h-20 bg-[#13ec37]/20 border-4 border-white p-1 backdrop-blur-sm ios-button relative z-30">
-                      <div className={`bg-white rounded-full w-full h-full flex items-center justify-center ${isProcessing ? 'animate-pulse' : ''}`}>
-                        {isProcessing ? (
-                          <span className="material-symbols-outlined text-3xl text-[#102213] animate-spin">progress_activity</span>
-                        ) : (
-                          <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>camera</span>
-                        )}
-                      </div>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={capturedImages.length > 0 ? processImages : () => setInvertColors(!invertColors)}
-                    className={`flex items-center justify-center rounded-full w-12 h-12 backdrop-blur-md relative z-30 ${capturedImages.length > 0 ? 'bg-[#13ec37] text-[#102213] shadow-[0_0_15px_rgba(19,236,55,0.5)]' : (invertColors ? 'bg-[#13ec37] text-[#102213]' : 'bg-black/50 text-white')}`}
-                  >
-                    <span className="material-symbols-outlined font-bold">
-                      {capturedImages.length > 0 ? 'arrow_forward' : 'invert_colors'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {cameraError && (
-                <div className="absolute inset-x-0 top-1/4 flex flex-col items-center justify-center p-6 z-10 animate-in fade-in zoom-in">
-                  <div className="bg-black/60 backdrop-blur-md p-6 rounded-2xl border border-amber-500/30 flex flex-col items-center text-center">
-                    <span className="material-symbols-outlined text-4xl text-amber-500 mb-2">no_photography</span>
-                    <p className="text-amber-400 font-bold mb-1">Cámara web inactiva</p>
-                    <p className="text-white/80 text-sm mb-4">{cameraError}</p>
-                    <p className="text-[#13ec37] font-bold text-sm animate-pulse flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">arrow_downward</span>
-                      Toca el botón central
-                      <span className="material-symbols-outlined text-sm">arrow_downward</span>
-                    </p>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 p-6">
-              <span className="material-symbols-outlined text-8xl mb-4">receipt_long</span>
-              <p className="text-center text-lg">Escanea un ticket de compra para extraer los precios</p>
-            </div>
-          )}
+      {/* Empty state / placeholder */}
+      {!isProcessing && capturedImages.length === 0 && !showResults && (
+        <div className="flex-1 px-4 py-2">
+          <div className="relative h-full min-h-[300px] rounded-3xl overflow-hidden border-2 border-[#13ec37]/20 bg-slate-900 border-dashed flex flex-col items-center justify-center opacity-40 p-6">
+            <span className="material-symbols-outlined text-8xl mb-4 text-[#13ec37]">receipt_long</span>
+            <p className="text-center text-lg">Toca en la cámara para escanear tickets y extraer los precios</p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Processing indicator */}
+      {isProcessing && (
+        <div className="mx-4 mt-8 p-6 bg-[#13ec37]/10 border border-[#13ec37]/20 rounded-xl text-center">
+          <span className="material-symbols-outlined text-4xl text-[#13ec37] animate-spin mb-4 block mx-auto">progress_activity</span>
+          <p className="text-[#13ec37] font-bold text-lg">Procesando imagen con IA...</p>
+          <p className="text-[#13ec37]/70 text-sm mt-2">Buscando productos y precios</p>
+        </div>
+      )}
 
       {/* Error message global */}
-      {error && !showCamera && (
+      {error && (
         <div className="mx-4 mb-28 p-4 bg-red-500/20 border border-red-500/30 rounded-xl">
           <p className="text-red-400 text-center text-sm">{error}</p>
         </div>
@@ -488,17 +330,45 @@ export function ScannerView() {
       {showResults && scannedItems.length > 0 && (
         <div className="fixed inset-0 z-50 bg-[#102213] flex flex-col">
           {/* Header */}
-          <header className="sticky top-0 bg-[#0a150c] p-4 border-b border-[#13ec37]/20 flex items-center justify-between z-10 shadow-md">
+          <header className="sticky top-0 bg-[#0a150c] px-4 py-3 border-b border-[#13ec37]/20 flex items-center justify-between z-10 shadow-md">
             <div>
               <h2 className="text-xl font-black text-white">Revisar Ticket</h2>
               <p className="text-[#92c99b] text-xs font-semibold">{scannedItems.length} productos detectados</p>
             </div>
-            <button onClick={clearResults} className="w-10 h-10 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center active:scale-90 transition-transform">
-              <span className="material-symbols-outlined font-bold">close</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={clearResults}
+                className="w-10 h-10 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center active:scale-90 transition-transform border border-red-500/20"
+              >
+                <span className="material-symbols-outlined font-bold">close</span>
+              </button>
+              <button
+                onClick={handleSaveToDatabase}
+                disabled={savedSuccess || !selectedStore}
+                className={`w-12 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-transform ${savedSuccess ? 'bg-[#92c99b] text-[#102213]' :
+                    selectedStore ? 'bg-[#13ec37] text-[#102213] shadow-[0_0_10px_rgba(19,236,55,0.3)] border border-[#13ec37]' :
+                      'bg-[#92c99b]/10 text-[#92c99b]/30 cursor-not-allowed border border-[#92c99b]/20'
+                  }`}
+              >
+                <span className="material-symbols-outlined font-black">{savedSuccess ? 'check_circle' : 'check'}</span>
+              </button>
+            </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-32">
+          {savedSuccess && (
+            <div className="bg-[#13ec37] text-[#102213] px-4 py-2 font-bold text-center flex items-center justify-center gap-2 text-sm animate-in slide-in-from-top-4">
+              <span className="material-symbols-outlined text-base">task_alt</span>
+              ¡Ticket guardado correctamente!
+            </div>
+          )}
+          {!selectedStore && !savedSuccess && (
+            <div className="bg-amber-500/10 text-amber-500 px-4 py-2 font-bold text-center flex items-center justify-center gap-2 text-sm animate-in slide-in-from-top-4">
+              <span className="material-symbols-outlined text-base">warning</span>
+              Elige un supermercado para poder guardar
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto px-4 pb-12">
             {/* Supermercado - Obligatorio */}
             <div className="mt-4 mb-6">
               <label className="text-xs font-bold text-[#92c99b] uppercase tracking-wider mb-2 block">Establecimiento</label>
@@ -606,44 +476,6 @@ export function ScannerView() {
             </div>
           </div>
 
-          {/* Botón Guardar Flotante */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a150c] via-[#0a150c] to-transparent pb-8 md:pb-4 safe-area-bottom flex flex-col gap-3">
-            <button
-              onClick={handleSaveToDatabase}
-              disabled={savedSuccess || !selectedStore}
-              className={`w-full max-w-md mx-auto font-black text-lg py-4 rounded-2xl shadow-xl transition-all active:scale-95 ${savedSuccess
-                ? "bg-[#92c99b] text-[#102213]"
-                : selectedStore
-                  ? "bg-[#13ec37] text-[#102213] shadow-[#13ec37]/20"
-                  : "bg-[#92c99b]/10 text-[#92c99b]/30 cursor-not-allowed border-2 border-dashed border-[#92c99b]/20"
-                }`}
-            >
-              {savedSuccess ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined font-black">check_circle</span>
-                  ¡Guardado Correctamente!
-                </span>
-              ) : !selectedStore ? (
-                <span className="flex items-center justify-center gap-2 text-sm">
-                  <span className="material-symbols-outlined text-lg">warning</span>
-                  Elige un Supermercado primero
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  Guardar en Base de Datos
-                  <span className="material-symbols-outlined">save</span>
-                </span>
-              )}
-            </button>
-            {!savedSuccess && (
-              <button
-                onClick={clearResults}
-                className="w-full max-w-md mx-auto font-bold text-sm py-3 text-red-400 bg-red-500/10 rounded-xl active:scale-95 transition-all"
-              >
-                Cancelar y descartar ticket
-              </button>
-            )}
-          </div>
         </div>
       )}
 
@@ -769,14 +601,6 @@ export function ScannerView() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Processing indicator */}
-      {isProcessing && !showCamera && (
-        <div className="mx-4 mb-28 p-6 bg-[#13ec37]/10 border border-[#13ec37]/20 rounded-xl text-center">
-          <span className="material-symbols-outlined text-4xl text-[#13ec37] animate-spin mb-2">progress_activity</span>
-          <p className="text-[#13ec37] font-medium">Procesando imagen con IA...</p>
         </div>
       )}
 
