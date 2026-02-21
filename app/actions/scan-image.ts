@@ -9,6 +9,8 @@ export interface ScannedPrice {
   productName: string;
   canonicalName?: string;
   price: number;
+  quantity: number;
+  unitPrice: number;
   store?: string;
 }
 
@@ -60,12 +62,14 @@ Antes de devolver el resultado, verifica internamente que la suma de los precios
 Si la suma no cuadra, es probable que hayas leído un precio mal. Si es así, vuelve a revisar tus lecturas de precios fila por fila hasta 3 veces antes de entregar la respuesta final.
 
 Responde SOLO con un objeto JSON con este formato exacto y NADA más:
-{"store":"Nombre del supermercado","products":[{"name":"texto original del ticket","canonicalName":"Articulo Madre Generico","price":1.23}]}
+{"store":"Nombre del supermercado","products":[{"name":"texto original del ticket","canonicalName":"Articulo Madre Generico","quantity":2,"unitPrice":1.50,"price":3.00}]}
 
 Reglas:
 - "store": nombre del supermercado o tienda. Si no lo ves seguro, usa "Desconocido".
-- "canonicalName": nombre genérico y limpio del producto SIEMPRE EN ESPAÑOL (Leche, Huevos, Pan, Tomate Frito, Queso, etc.).
-- Precios con punto decimal. Usa el importe total de esa línea de producto (no el precio por kilo, a menos que sea lo único que haya).
+- "canonicalName": nombre genérico y limpio del producto SIEMPRE EN ESPAÑOL (Leche, Huevos, Pan, Tomate Frito, etc.).
+- "quantity": La cantidad, peso o unidades compradas. Si el ticket no indica cantidad explícita, pon 1.
+- "unitPrice": El precio por unidad o precio base.
+- "price": El precio TOTAL cobrado por esa línea de producto (usualmente quantity * unitPrice). Precios con punto decimal.
 - Sin markdown, sin explicaciones. Las claves del JSON deben ir entre comillas dobles.`;
 
   // Preparar imágenes
@@ -108,13 +112,33 @@ Reglas:
       const store = parsed.store || 'Tienda';
 
       const prices: ScannedPrice[] = products
-        .map((p: any) => ({
-          productName: String(p.name || 'Producto').trim(),
-          canonicalName: String(p.canonicalName || p.name || 'Producto').trim(),
-          price: parseFloat(String(p.price || 0).replace(',', '.')),
-          store
-        }))
-        .filter((p: ScannedPrice) => p.price > 0);
+        .map((p: any) => {
+          let q = parseFloat(String(p.quantity || 1).replace(',', '.'));
+          let total = parseFloat(String(p.price || p.totalPrice || 0).replace(',', '.'));
+          let unit = parseFloat(String(p.unitPrice || 0).replace(',', '.'));
+
+          // Deducir variables faltantes si es posible
+          if (!unit && total && q) unit = total / q;
+          if (!total && unit && q) total = unit * q;
+          if (unit && total && (!p.quantity || q === 1) && Math.abs(total - unit) > 0.01) {
+            q = total / unit;
+          }
+
+          // Redondear para evitar decimales infinitos
+          if (q) q = Math.round(q * 1000) / 1000;
+          if (unit) unit = Math.round(unit * 100) / 100;
+          if (total) total = Math.round(total * 100) / 100;
+
+          return {
+            productName: String(p.name || 'Producto').trim(),
+            canonicalName: String(p.canonicalName || p.name || 'Producto').trim(),
+            price: total || 0,
+            quantity: q || 1,
+            unitPrice: unit || total || 0,
+            store
+          };
+        })
+        .filter((p: ScannedPrice) => p.price > 0 || p.unitPrice > 0);
 
       if (prices.length === 0) {
         continue;

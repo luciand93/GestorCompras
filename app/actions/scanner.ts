@@ -7,6 +7,8 @@ import { revalidatePath } from "next/cache";
 interface ScannedItemToSave {
   productName: string;
   price: number;
+  quantity?: number;
+  unitPrice?: number;
   store: string;
   matchedProductId?: string;
   isNewProduct?: boolean;
@@ -18,6 +20,8 @@ export async function saveScannedPrices(items: ScannedPrice[]) {
   const itemsToSave: ScannedItemToSave[] = items.map(item => ({
     productName: item.canonicalName || item.productName,
     price: item.price,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
     store: item.store || 'Tienda',
     isNewProduct: true,
     ticketName: item.productName
@@ -119,13 +123,14 @@ export async function saveScannedPricesWithMatching(items: ScannedItemToSave[]) 
       }
 
       // Guardar precio
+      const finalUnitPrice = item.unitPrice || item.price;
       const { data: priceData, error: priceError } = await supabase
         .from("prices")
         .insert({
           product_id: productId,
           supermarket_name: item.store,
-          price: item.price,
-          unit_price: null,
+          price: finalUnitPrice, // Catalogo comparta esto
+          unit_price: finalUnitPrice,
           date_recorded: today,
         })
         .select()

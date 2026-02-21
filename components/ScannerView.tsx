@@ -205,6 +205,8 @@ export function ScannerView() {
     const itemsToSave = scannedItems.map(item => ({
       productName: item.customName || item.matchedProductName || item.canonicalName || item.productName,
       price: item.price,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
       store: selectedStore,
       matchedProductId: item.matchedProductId,
       isNewProduct: item.isNewProduct,
@@ -408,9 +410,10 @@ export function ScannerView() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[#19331e]/50 text-[10px] text-[#92c99b] uppercase tracking-wider border-b border-[#13ec37]/20">
-                    <th className="py-3 px-3 w-[65%] font-bold">Artículo</th>
-                    <th className="py-3 px-3 w-[25%] font-bold text-right pt-2 pb-2">Precio</th>
-                    <th className="py-3 px-2 w-[10%] text-center"></th>
+                    <th className="py-3 px-3 font-bold text-left">Artículo</th>
+                    <th className="py-3 px-1 font-bold text-right">Cant / Und</th>
+                    <th className="py-3 px-2 font-bold text-right pt-2 pb-2">Total</th>
+                    <th className="py-3 px-1 w-[8%] text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="text-sm">
@@ -418,7 +421,7 @@ export function ScannerView() {
                     const displayedMother = item.matchedProductName || item.customName || item.canonicalName || item.productName;
                     return (
                       <tr key={index} className="border-b border-[#13ec37]/10 last:border-0 hover:bg-[#19331e] transition-colors relative">
-                        <td className="py-3 px-3 align-top">
+                        <td className="py-3 px-3 align-top min-w-[35%] max-w-[45%] overflow-hidden">
                           {/* Editable Mother Article trigger */}
                           <div
                             onClick={() => { setEditingItemIndex(index); setShowProductMatcher(true); }}
@@ -428,34 +431,67 @@ export function ScannerView() {
                               <p className={`text-sm font-black leading-tight truncate ${item.matchedProductId ? 'text-[#13ec37]' : 'text-amber-400'}`}>
                                 {displayedMother}
                               </p>
-                              <span className="material-symbols-outlined text-[14px] text-white/20 group-hover:text-white/80">edit</span>
+                              <span className="material-symbols-outlined text-[14px] text-white/20 group-hover:text-white/80 shrink-0">edit</span>
                             </div>
-                            <p className="font-medium text-[11px] leading-tight line-clamp-1 text-white/50">{item.productName}</p>
-                            <div className="mt-1.5 flex gap-1">
+                            <p className="font-medium text-[10px] leading-tight line-clamp-1 text-white/50">{item.productName}</p>
+                            <div className="mt-1.5 flex gap-1 flex-wrap">
                               {!item.matchedProductId && (
-                                <span className="text-[9px] bg-amber-400/20 border border-amber-400/30 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Nuevo Catálogo</span>
+                                <span className="text-[8px] bg-amber-400/20 border border-amber-400/30 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Nuevo catál.</span>
                               )}
                               {item.matchedProductId && (
-                                <span className="text-[9px] bg-[#13ec37]/10 border border-[#13ec37]/20 text-[#13ec37] px-1.5 py-0.5 rounded font-bold uppercase">Existente</span>
+                                <span className="text-[8px] bg-[#13ec37]/10 border border-[#13ec37]/20 text-[#13ec37] px-1.5 py-0.5 rounded font-bold uppercase">Exist.</span>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-right align-top">
+                        <td className="py-3 px-1 text-right align-top">
+                          <div className="flex flex-col items-end gap-1.5">
+                            <div className="flex items-center gap-1">
+                              <input
+                                title="Cantidad"
+                                type="number"
+                                step="any"
+                                value={item.quantity || 1}
+                                onChange={(e) => {
+                                  const q = parseFloat(e.target.value) || 0;
+                                  setScannedItems(items => items.map((it, i) => i === index ? { ...it, quantity: q, price: Math.round(q * it.unitPrice * 100) / 100 } : it));
+                                }}
+                                className="w-10 text-[11px] bg-[#19331e] border border-white/20 text-white font-medium text-center p-1 rounded focus:outline-none focus:border-[#13ec37]"
+                              />
+                              <span className="text-white/40 text-[10px]">x</span>
+                            </div>
+                            <div className="flex items-center gap-0.5">
+                              <input
+                                title="Precio Unitario"
+                                type="number"
+                                step="0.01"
+                                value={item.unitPrice || item.price}
+                                onChange={(e) => {
+                                  const up = parseFloat(e.target.value) || 0;
+                                  setScannedItems(items => items.map((it, i) => i === index ? { ...it, unitPrice: up, price: Math.round(it.quantity * up * 100) / 100 } : it));
+                                }}
+                                className="w-12 text-[11px] bg-[#19331e] border border-[#13ec37]/30 text-[#13ec37] font-bold text-right p-1 rounded focus:outline-none focus:border-[#13ec37]"
+                              />
+                              <span className="text-[#13ec37]/70 font-bold text-[10px]">€</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-right align-top">
                           {/* Inline editable price input */}
-                          <div className="flex items-center justify-end">
+                          <div className="flex items-center justify-end h-full mt-2">
                             <input
-                              title="Editar Precio"
+                              title="Precio Total"
                               type="number"
                               step="0.01"
                               value={item.price}
                               onChange={(e) => {
-                                const newPrice = parseFloat(e.target.value) || 0;
-                                setScannedItems(items => items.map((it, i) => i === index ? { ...it, price: newPrice } : it));
+                                const t = parseFloat(e.target.value) || 0;
+                                const u = item.quantity ? t / item.quantity : t;
+                                setScannedItems(items => items.map((it, i) => i === index ? { ...it, price: t, unitPrice: Math.round(u * 100) / 100 } : it));
                               }}
-                              className="w-16 bg-[#19331e] border border-[#13ec37]/30 text-[#13ec37] font-black text-right p-1.5 rounded-lg focus:outline-none focus:border-[#13ec37] focus:ring-1 focus:ring-[#13ec37]"
+                              className="w-12 bg-transparent border-none p-0 text-[#13ec37] font-black text-right focus:outline-none focus:ring-0 text-base"
                             />
-                            <span className="text-[#13ec37] font-black ml-1">€</span>
+                            <span className="text-[#13ec37] font-black ml-0.5 text-base">€</span>
                           </div>
                         </td>
                         <td className="py-3 px-2 text-center align-top">
