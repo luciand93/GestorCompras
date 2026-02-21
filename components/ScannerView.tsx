@@ -59,18 +59,22 @@ export function ScannerView() {
     try {
       setCameraError(null);
       setError(null);
+      setShowResults(false);
+      setScannedItems([]);
+      setSavedSuccess(false);
 
       // Verificación de seguridad síncrona. Si el usuario accede por HTTP en su red local, 
       // iOS/Android ocultan navigator.mediaDevices por políticas de seguridad del navegador.
-      // En ese caso, usamos silenciosamente el modo de cámara nativa.
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setCameraError("Cámara integrada requiere HTTPS. Usando cámara nativa...");
-        cameraInputRef.current?.click();
+        setShowCamera(true);
+        setCameraError("Estás en una red local HTTP. Usa la cámara nativa.");
         return;
       }
 
+      setShowCamera(true); // Abrimos la vista de cámara visualmente
+
       const constraints: MediaStreamConstraints = {
-        video: { facingMode: 'environment' },
+        video: { facingMode: { ideal: 'environment' } },
         audio: false
       };
 
@@ -82,16 +86,12 @@ export function ScannerView() {
         await videoRef.current.play().catch(e => console.error("Play error", e));
       }
 
-      setShowCamera(true);
-      setShowResults(false);
-      setScannedItems([]);
-      setSavedSuccess(false);
     } catch (err: any) {
       console.error("Error accessing camera:", err);
-      // Fallback a cámara nativa si la cámara integrada es rechazada (por permisos u otro error)
-      const errorMsg = err.name === 'NotAllowedError' ? "Permiso de cámara denegado." : "Cámara integrada no compatible.";
-      setCameraError(`${errorMsg} Abriendo nativa...`);
-      cameraInputRef.current?.click();
+      // Fallback a cámara nativa si es rechazada o falla
+      setShowCamera(true);
+      const errorMsg = err.name === 'NotAllowedError' ? "Permiso denegado." : "Cámara web no compatible.";
+      setCameraError(`${errorMsg} Usa la cámara nativa.`);
     }
   };
 
@@ -342,8 +342,8 @@ export function ScannerView() {
         </button>
       </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
+      <input ref={fileInputRef} id="native-gallery-input" type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
+      <input ref={cameraInputRef} id="native-camera-input" type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
 
       {/* Floating badge para fotos capturadas y botón procesar (solo cuando vemos el estado inactivo, no la camara) */}
       {capturedImages.length > 0 && !showResults && !isProcessing && !showCamera && (
@@ -418,23 +418,33 @@ export function ScannerView() {
 
                 {/* Botones principales de la cámara */}
                 <div className="flex items-center justify-center gap-8">
-                  <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center rounded-full w-12 h-12 bg-black/50 text-white backdrop-blur-md">
+                  <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center rounded-full w-12 h-12 bg-black/50 text-white backdrop-blur-md relative z-30">
                     <span className="material-symbols-outlined">photo_library</span>
                   </button>
 
-                  <button onClick={capturePhoto} disabled={isProcessing} className="flex flex-col items-center justify-center rounded-full w-20 h-20 bg-[#13ec37]/20 border-4 border-white p-1 backdrop-blur-sm ios-button relative">
-                    <div className={`bg-white rounded-full w-full h-full flex items-center justify-center ${isProcessing ? 'animate-pulse' : ''}`}>
-                      {isProcessing ? (
-                        <span className="material-symbols-outlined text-3xl text-[#102213] animate-spin">progress_activity</span>
-                      ) : (
+                  {cameraError ? (
+                    // Botón de fallback para cámara nativa usando un label 100% fiable
+                    <label htmlFor="native-camera-input" className="flex flex-col items-center justify-center rounded-full w-20 h-20 bg-amber-500/20 border-4 border-amber-500 p-1 backdrop-blur-sm ios-button relative cursor-pointer z-30">
+                      <div className="bg-amber-500 rounded-full w-full h-full flex items-center justify-center">
                         <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>camera</span>
-                      )}
-                    </div>
-                  </button>
+                      </div>
+                    </label>
+                  ) : (
+                    // Botón de cámara web integrada
+                    <button onClick={capturePhoto} disabled={isProcessing} className="flex flex-col items-center justify-center rounded-full w-20 h-20 bg-[#13ec37]/20 border-4 border-white p-1 backdrop-blur-sm ios-button relative z-30">
+                      <div className={`bg-white rounded-full w-full h-full flex items-center justify-center ${isProcessing ? 'animate-pulse' : ''}`}>
+                        {isProcessing ? (
+                          <span className="material-symbols-outlined text-3xl text-[#102213] animate-spin">progress_activity</span>
+                        ) : (
+                          <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>camera</span>
+                        )}
+                      </div>
+                    </button>
+                  )}
 
                   <button
                     onClick={capturedImages.length > 0 ? processImages : () => setInvertColors(!invertColors)}
-                    className={`flex items-center justify-center rounded-full w-12 h-12 backdrop-blur-md ${capturedImages.length > 0 ? 'bg-[#13ec37] text-[#102213] shadow-[0_0_15px_rgba(19,236,55,0.5)]' : (invertColors ? 'bg-[#13ec37] text-[#102213]' : 'bg-black/50 text-white')}`}
+                    className={`flex items-center justify-center rounded-full w-12 h-12 backdrop-blur-md relative z-30 ${capturedImages.length > 0 ? 'bg-[#13ec37] text-[#102213] shadow-[0_0_15px_rgba(19,236,55,0.5)]' : (invertColors ? 'bg-[#13ec37] text-[#102213]' : 'bg-black/50 text-white')}`}
                   >
                     <span className="material-symbols-outlined font-bold">
                       {capturedImages.length > 0 ? 'arrow_forward' : 'invert_colors'}
@@ -442,6 +452,21 @@ export function ScannerView() {
                   </button>
                 </div>
               </div>
+
+              {cameraError && (
+                <div className="absolute inset-x-0 top-1/4 flex flex-col items-center justify-center p-6 z-10 animate-in fade-in zoom-in">
+                  <div className="bg-black/60 backdrop-blur-md p-6 rounded-2xl border border-amber-500/30 flex flex-col items-center text-center">
+                    <span className="material-symbols-outlined text-4xl text-amber-500 mb-2">no_photography</span>
+                    <p className="text-amber-400 font-bold mb-1">Cámara web inactiva</p>
+                    <p className="text-white/80 text-sm mb-4">{cameraError}</p>
+                    <p className="text-[#13ec37] font-bold text-sm animate-pulse flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                      Toca el botón central
+                      <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                    </p>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 p-6">
@@ -449,17 +474,10 @@ export function ScannerView() {
               <p className="text-center text-lg">Escanea un ticket de compra para extraer los precios</p>
             </div>
           )}
-
-          {cameraError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/20 p-6">
-              <span className="material-symbols-outlined text-4xl text-red-500 mb-4">error</span>
-              <p className="text-center text-red-400">{cameraError}</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Error message */}
+      {/* Error message global */}
       {error && !showCamera && (
         <div className="mx-4 mb-28 p-4 bg-red-500/20 border border-red-500/30 rounded-xl">
           <p className="text-red-400 text-center text-sm">{error}</p>
