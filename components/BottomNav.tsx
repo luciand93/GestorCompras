@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import pkg from "@/package.json";
 
 const navItems = [
   { href: "/", icon: "list_alt", label: "Listas" },
@@ -19,7 +20,7 @@ export function BottomNav() {
       <div className="max-w-md mx-auto flex items-center justify-around py-2 px-6">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
-          
+
           return (
             <Link
               key={item.href}
@@ -31,7 +32,7 @@ export function BottomNav() {
                   : "text-[#92c99b]/60 hover:text-[#92c99b]"
               )}
             >
-              <span 
+              <span
                 className="material-symbols-outlined text-[28px]"
                 style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
               >
@@ -46,6 +47,9 @@ export function BottomNav() {
             </Link>
           );
         })}
+      </div>
+      <div className="absolute top-0 right-2 -mt-4 bg-[#13ec37]/10 px-1.5 py-0.5 rounded text-[8px] font-mono text-[#92c99b]/40 backdrop-blur-sm pointer-events-none">
+        v{pkg.version}
       </div>
     </nav>
   );
