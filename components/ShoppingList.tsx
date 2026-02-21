@@ -11,6 +11,7 @@ import {
   clearAllItems,
 } from "@/app/actions/shopping-list";
 import { searchProducts, getRecentProducts } from "@/app/actions/products";
+import { getAllProducts } from "@/app/actions/prices";
 import { ListComparison } from "./ListComparison";
 import type { ShoppingListItem } from "@/lib/supabase";
 
@@ -25,6 +26,7 @@ export function ShoppingList() {
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [recentProducts, setRecentProducts] = useState<string[]>([]);
+  const [motherArticles, setMotherArticles] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const loadItems = async () => {
@@ -40,6 +42,10 @@ export function ShoppingList() {
   const loadRecentProducts = async () => {
     const recent = await getRecentProducts();
     setRecentProducts(recent);
+    const { data: allProducts } = await getAllProducts();
+    if (allProducts && Array.isArray(allProducts)) {
+      setMotherArticles(allProducts.map((p: any) => p.name));
+    }
   };
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export function ShoppingList() {
   };
 
   const handleToggleChecked = async (id: string, currentChecked: boolean) => {
-    setItems(items.map(item => 
+    setItems(items.map(item =>
       item.id === id ? { ...item, is_checked: !currentChecked } : item
     ));
     await toggleItemChecked(id, !currentChecked);
@@ -290,7 +296,7 @@ export function ShoppingList() {
             <span className="material-symbols-outlined text-xl">add</span>
             <span>Añadir</span>
           </button>
-          
+
           {/* Compare button */}
           {pendingItems.length > 0 && (
             <button
@@ -301,7 +307,7 @@ export function ShoppingList() {
               <span>Comparar precios ({pendingItems.length})</span>
             </button>
           )}
-          
+
           {/* Finalize button */}
           {checkedItems.length > 0 && (
             <button
@@ -328,7 +334,7 @@ export function ShoppingList() {
               </button>
             </div>
             <div className="p-4">
-              
+
               <div className="relative mb-4">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#92c99b]/60">search</span>
                 <input
@@ -340,7 +346,7 @@ export function ShoppingList() {
                   className="w-full pl-10 pr-4 py-3 text-lg border border-[#13ec37]/20 rounded-xl bg-[#19331e] text-white placeholder:text-[#92c99b]/40 focus:outline-none focus:ring-2 focus:ring-[#13ec37]"
                   autoFocus
                 />
-                
+
                 {showSuggestions && suggestions.length > 0 && (
                   <div className="absolute z-10 w-full mt-2 bg-[#19331e] rounded-xl shadow-lg border border-[#13ec37]/20 overflow-hidden">
                     {suggestions.map((s, i) => (
@@ -356,20 +362,41 @@ export function ShoppingList() {
                 )}
               </div>
 
-              {!showSuggestions && recentProducts.length > 0 && !newItemName && (
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-[#92c99b]/60 mb-2">Recientes:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {recentProducts.slice(0, 6).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setNewItemName(p)}
-                        className="px-3 py-1.5 text-sm bg-[#13ec37]/10 text-white rounded-full"
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
+              {!showSuggestions && !newItemName && (
+                <div className="mb-4 max-h-[40vh] overflow-y-auto pr-1">
+                  {recentProducts.length > 0 && (
+                    <div className="mb-5">
+                      <p className="text-sm font-medium text-[#92c99b]/60 mb-2">Añadidos recientemente:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {recentProducts.slice(0, 6).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setNewItemName(p)}
+                            className="px-3 py-1.5 text-sm bg-[#13ec37]/10 text-white rounded-full border border-[#13ec37]/20 hover:bg-[#13ec37]/20 transition-colors"
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {motherArticles.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-[#92c99b]/60 mb-2">Catálogo de Artículos:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {motherArticles.map((p, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setNewItemName(p)}
+                            className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white rounded-lg text-left line-clamp-1 transition-colors"
+                            title={p}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

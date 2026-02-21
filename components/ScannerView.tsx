@@ -22,6 +22,7 @@ export function ScannerView() {
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Para selector de tienda
   const [showStoreSelector, setShowStoreSelector] = useState(false);
@@ -200,6 +201,7 @@ export function ScannerView() {
       return;
     }
 
+    setIsSaving(true);
     const itemsToSave = scannedItems.map(item => ({
       productName: item.customName || item.matchedProductName || item.canonicalName || item.productName,
       price: item.price,
@@ -222,6 +224,7 @@ export function ScannerView() {
     } else {
       setError(result.error || "Error al guardar");
     }
+    setIsSaving(false);
   };
 
   const clearResults = () => {
@@ -344,13 +347,17 @@ export function ScannerView() {
               </button>
               <button
                 onClick={handleSaveToDatabase}
-                disabled={savedSuccess || !selectedStore}
+                disabled={savedSuccess || isSaving || !selectedStore}
                 className={`w-12 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-transform ${savedSuccess ? 'bg-[#92c99b] text-[#102213]' :
-                    selectedStore ? 'bg-[#13ec37] text-[#102213] shadow-[0_0_10px_rgba(19,236,55,0.3)] border border-[#13ec37]' :
-                      'bg-[#92c99b]/10 text-[#92c99b]/30 cursor-not-allowed border border-[#92c99b]/20'
+                  selectedStore ? 'bg-[#13ec37] text-[#102213] shadow-[0_0_10px_rgba(19,236,55,0.3)] border border-[#13ec37]' :
+                    'bg-[#92c99b]/10 text-[#92c99b]/30 cursor-not-allowed border border-[#92c99b]/20'
                   }`}
               >
-                <span className="material-symbols-outlined font-black">{savedSuccess ? 'check_circle' : 'check'}</span>
+                {isSaving ? (
+                  <span className="material-symbols-outlined font-black animate-spin">progress_activity</span>
+                ) : (
+                  <span className="material-symbols-outlined font-black">{savedSuccess ? 'check_circle' : 'check'}</span>
+                )}
               </button>
             </div>
           </header>

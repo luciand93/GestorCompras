@@ -8,7 +8,7 @@ import pkg from "@/package.json";
 const navItems = [
   { href: "/", icon: "list_alt", label: "Listas" },
   { href: "/scanner", icon: "receipt_long", label: "Escáner" },
-  { href: "/comparator", icon: "analytics", label: "Comparar" },
+  { href: "/comparator", icon: "analytics", label: "Artículos" },
   { href: "/supermarkets", icon: "store", label: "Super" },
 ];
 
