@@ -17,6 +17,7 @@ interface ScannedItemWithMatch extends ScannedPrice {
 
 export function ScannerView() {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [scannedItems, setScannedItems] = useState<ScannedItemWithMatch[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
@@ -109,21 +110,34 @@ export function ScannerView() {
     if (ctx) {
       ctx.drawImage(videoRef.current, 0, 0);
       const imageData = canvas.toDataURL("image/jpeg", 0.8);
-      stopCamera();
-      await processImage(imageData);
+      // Agregar la foto a la lista en lugar de procesar inmediatamente
+      setCapturedImages(prev => [...prev, imageData]);
+
+      // Feedback visual rápido
+      videoRef.current.style.opacity = '0.5';
+      setTimeout(() => {
+        if (videoRef.current) videoRef.current.style.opacity = '1';
+      }, 150);
     }
   };
 
   const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    // Permitir múltiples archivos
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const imageData = event.target?.result as string;
-      await processImage(imageData);
-    };
-    reader.readAsDataURL(file);
+    for (const file of files) {
+      const reader = new FileReader();
+      const readPromise = new Promise<void>((resolve) => {
+        reader.onload = (event) => {
+          const imageData = event.target?.result as string;
+          setCapturedImages(prev => [...prev, imageData]);
+          resolve();
+        };
+      });
+      reader.readAsDataURL(file);
+      await readPromise;
+    }
     e.target.value = '';
   };
 
@@ -132,31 +146,40 @@ export function ScannerView() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (event) => {
+    reader.onload = (event) => {
       const imageData = event.target?.result as string;
-      await processImage(imageData);
+      setCapturedImages(prev => [...prev, imageData]);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   };
 
-  const processImage = async (imageData: string) => {
+  const processImages = async () => {
+    if (capturedImages.length === 0) return;
+
     setIsProcessing(true);
     setError(null);
     setSavedSuccess(false);
     setShowResults(false);
 
-    try {
-      const optimizedImage = await imageProcessor.processImage(imageData, {
-        maxWidth: 512,
-        maxHeight: 640,
-        quality: 0.4,
-        grayscale: true,
-        contrast: 1.5,
-        invert: invertColors
-      });
+    // Detener la cámara si está encendida
+    stopCamera();
 
-      const result = await scanImageOnServer(optimizedImage);
+    try {
+      const optimizedImages = await Promise.all(
+        capturedImages.map(img =>
+          imageProcessor.processImage(img, {
+            maxWidth: 512,
+            maxHeight: 640,
+            quality: 0.4,
+            grayscale: true,
+            contrast: 1.5,
+            invert: invertColors
+          })
+        )
+      );
+
+      const result = await scanImageOnServer(optimizedImages);
 
       if (result.error) {
         setError(result.error);
@@ -277,6 +300,7 @@ export function ScannerView() {
 
   const clearResults = () => {
     setScannedItems([]);
+    setCapturedImages([]);
     setShowResults(false);
     setSavedSuccess(false);
     setSelectedStore("");
@@ -305,8 +329,8 @@ export function ScannerView() {
         <button
           onClick={showCamera ? stopCamera : startCamera}
           className={`flex-1 flex items-center justify-center gap-2 h-12 px-5 rounded-xl font-bold ios-button ${showCamera
-              ? 'bg-red-500 text-white'
-              : 'bg-[#13ec37] text-[#102213] shadow-lg shadow-[#13ec37]/30'
+            ? 'bg-red-500 text-white'
+            : 'bg-[#13ec37] text-[#102213] shadow-lg shadow-[#13ec37]/30'
             }`}
         >
           <span className="material-symbols-outlined">{showCamera ? 'close' : 'photo_camera'}</span>
@@ -314,8 +338,34 @@ export function ScannerView() {
         </button>
       </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleGalleryUpload} className="hidden" />
+      <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
+
+      {/* Floating badge para fotos capturadas y botón procesar */}
+      {capturedImages.length > 0 && !showResults && !isProcessing && (
+        <div className="mx-4 mb-4 flex items-center justify-between bg-[#19331e] p-3 rounded-xl border border-[#13ec37]/30 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#13ec37]">imagesmode</span>
+            <span className="font-bold text-sm text-white">
+              {capturedImages.length} {capturedImages.length === 1 ? 'foto lista' : 'fotos listas'}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCapturedImages([])}
+              className="px-3 py-1.5 bg-red-500/20 text-red-500 rounded-lg text-xs font-bold"
+            >
+              Borrar
+            </button>
+            <button
+              onClick={processImages}
+              className="px-4 py-1.5 bg-[#13ec37] text-[#102213] rounded-lg text-sm font-black flex items-center gap-1 shadow-md shadow-[#13ec37]/20"
+            >
+              Procesar <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Camera viewfinder */}
       <div className="flex-1 px-4 py-2">
@@ -339,14 +389,19 @@ export function ScannerView() {
                   <span className="material-symbols-outlined">photo_library</span>
                 </button>
 
-                <button onClick={capturePhoto} disabled={isProcessing} className="flex items-center justify-center rounded-full w-20 h-20 bg-[#13ec37]/20 border-4 border-white p-1 backdrop-blur-sm ios-button">
+                <button onClick={capturePhoto} disabled={isProcessing} className="flex flex-col items-center justify-center rounded-full w-20 h-20 bg-[#13ec37]/20 border-4 border-white p-1 backdrop-blur-sm ios-button relative">
                   <div className={`bg-white rounded-full w-full h-full flex items-center justify-center ${isProcessing ? 'animate-pulse' : ''}`}>
                     {isProcessing ? (
                       <span className="material-symbols-outlined text-3xl text-[#102213] animate-spin">progress_activity</span>
                     ) : (
-                      <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>circle</span>
+                      <span className="material-symbols-outlined text-4xl text-[#102213]" style={{ fontVariationSettings: "'FILL' 1" }}>camera</span>
                     )}
                   </div>
+                  {capturedImages.length > 0 && !isProcessing && (
+                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-[#102213]">
+                      {capturedImages.length}
+                    </div>
+                  )}
                 </button>
 
                 <button onClick={() => setInvertColors(!invertColors)} className={`flex items-center justify-center rounded-full w-12 h-12 backdrop-blur-md ${invertColors ? 'bg-[#13ec37] text-[#102213]' : 'bg-black/50 text-white'}`}>
@@ -401,8 +456,8 @@ export function ScannerView() {
             <button
               onClick={() => setShowStoreSelector(true)}
               className={`w-full mb-4 p-3 rounded-xl flex items-center justify-between ios-button ${selectedStore
-                  ? "bg-[#19331e] border border-[#13ec37]/20"
-                  : "bg-amber-500/10 border-2 border-amber-500/50"
+                ? "bg-[#19331e] border border-[#13ec37]/20"
+                : "bg-amber-500/10 border-2 border-amber-500/50"
                 }`}
             >
               <div className="flex items-center gap-2">
@@ -475,10 +530,10 @@ export function ScannerView() {
               onClick={handleSaveToDatabase}
               disabled={savedSuccess || !selectedStore}
               className={`w-full mt-4 font-bold py-3 rounded-xl ios-button ${savedSuccess
-                  ? "bg-[#92c99b] text-[#102213]"
-                  : selectedStore
-                    ? "bg-[#13ec37] text-[#102213] shadow-lg"
-                    : "bg-[#92c99b]/30 text-[#92c99b]/60 cursor-not-allowed"
+                ? "bg-[#92c99b] text-[#102213]"
+                : selectedStore
+                  ? "bg-[#13ec37] text-[#102213] shadow-lg"
+                  : "bg-[#92c99b]/30 text-[#92c99b]/60 cursor-not-allowed"
                 }`}
             >
               {savedSuccess ? (
@@ -537,8 +592,8 @@ export function ScannerView() {
                       key={i}
                       onClick={() => handleSelectStore(store)}
                       className={`w-full p-3 rounded-xl text-left flex items-center gap-3 ${selectedStore === store
-                          ? 'bg-[#13ec37]/20 border border-[#13ec37]'
-                          : 'bg-[#19331e] border border-[#13ec37]/10'
+                        ? 'bg-[#13ec37]/20 border border-[#13ec37]'
+                        : 'bg-[#19331e] border border-[#13ec37]/10'
                         }`}
                     >
                       <span className="material-symbols-outlined text-[#13ec37]">store</span>
@@ -572,8 +627,8 @@ export function ScannerView() {
                       key={i}
                       onClick={() => handleMatchProduct(editingItemIndex!, suggestion)}
                       className={`w-full p-3 mb-2 rounded-xl text-left flex items-center justify-between ${currentEditingItem.matchedProductId === suggestion.id
-                          ? 'bg-[#13ec37]/20 border border-[#13ec37]'
-                          : 'bg-[#19331e] border border-[#13ec37]/10'
+                        ? 'bg-[#13ec37]/20 border border-[#13ec37]'
+                        : 'bg-[#19331e] border border-[#13ec37]/10'
                         }`}
                     >
                       <div>
