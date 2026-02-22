@@ -5,6 +5,7 @@ import { scanImageOnServer, type ScannedPrice } from "@/app/actions/scan-image";
 import { saveScannedPricesWithMatching } from "@/app/actions/scanner";
 import { getStores } from "@/app/actions/stores";
 import { findSimilarProducts, type ProductSuggestion } from "@/app/actions/product-matching";
+import { checkInflationAlerts } from "@/app/actions/inflation";
 import imageProcessor from "@/utils/image-processor";
 
 interface ScannedItemWithMatch extends ScannedPrice {
@@ -23,6 +24,7 @@ export function ScannerView() {
   const [showResults, setShowResults] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [inflationAlerts, setInflationAlerts] = useState<Record<string, { minPrice: number }>>({});
 
   // Para selector de tienda
   const [showStoreSelector, setShowStoreSelector] = useState(false);
@@ -125,6 +127,10 @@ export function ScannerView() {
             };
           })
         );
+
+        const matchIds = itemsWithMatches.map(i => i.matchedProductId).filter(Boolean) as string[];
+        const alerts = await checkInflationAlerts(matchIds);
+        setInflationAlerts(alerts);
 
         setScannedItems(itemsWithMatches);
         setShowResults(true);
@@ -434,12 +440,20 @@ export function ScannerView() {
                               <span className="material-symbols-outlined text-[14px] text-white/20 group-hover:text-white/80 shrink-0">edit</span>
                             </div>
                             <p className="font-medium text-[10px] leading-tight line-clamp-1 text-white/50">{item.productName}</p>
-                            <div className="mt-1.5 flex gap-1 flex-wrap">
+                            <div className="mt-1.5 flex gap-1 flex-wrap items-center">
                               {!item.matchedProductId && (
                                 <span className="text-[8px] bg-amber-400/20 border border-amber-400/30 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Nuevo catál.</span>
                               )}
                               {item.matchedProductId && (
                                 <span className="text-[8px] bg-[#13ec37]/10 border border-[#13ec37]/20 text-[#13ec37] px-1.5 py-0.5 rounded font-bold uppercase">Exist.</span>
+                              )}
+                              {item.matchedProductId && inflationAlerts[item.matchedProductId] && (item.unitPrice > inflationAlerts[item.matchedProductId].minPrice * 1.15) && (
+                                <span
+                                  className="text-[8px] bg-red-500/20 border border-red-500/30 text-red-500 px-1.5 py-0.5 rounded font-bold uppercase shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-pulse"
+                                  title={`Precio mínimo histórico: ${inflationAlerts[item.matchedProductId].minPrice.toFixed(2)}€`}
+                                >
+                                  🚨 +{Math.round(((item.unitPrice - inflationAlerts[item.matchedProductId].minPrice) / inflationAlerts[item.matchedProductId].minPrice) * 100)}%
+                                </span>
                               )}
                             </div>
                           </div>

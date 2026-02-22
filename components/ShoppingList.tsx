@@ -12,6 +12,7 @@ import {
 } from "@/app/actions/shopping-list";
 import { searchProducts, getRecentProducts } from "@/app/actions/products";
 import { getAllProducts } from "@/app/actions/prices";
+import { parseVoiceShoppingList } from "@/app/actions/voice-parser";
 import { ListComparison } from "./ListComparison";
 import type { ShoppingListItem } from "@/lib/supabase";
 
@@ -28,6 +29,8 @@ export function ShoppingList() {
   const [recentProducts, setRecentProducts] = useState<string[]>([]);
   const [motherArticles, setMotherArticles] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceProcessing, setVoiceProcessing] = useState(false);
 
   const loadItems = async () => {
     setLoading(true);
@@ -137,6 +140,60 @@ export function ShoppingList() {
   const handleQuickAdd = async (productName: string) => {
     const { error } = await addToShoppingList(productName, 1);
     if (!error) await loadItems();
+  };
+
+  const startListening = () => {
+    try {
+      // @ts-ignore
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Tu navegador no soporta reconocimiento de voz nativo. Usa Chrome o Safari.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'es-ES';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = async (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setIsListening(false);
+        setVoiceProcessing(true);
+
+        const result = await parseVoiceShoppingList(transcript);
+        if (result.items && result.items.length > 0) {
+          for (const item of result.items) {
+            await addToShoppingList(item.name, item.quantity);
+          }
+          await loadItems();
+          await loadRecentProducts();
+        } else if (result.error) {
+          alert('Error: ' + result.error);
+        }
+        setVoiceProcessing(false);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech error", event);
+        setIsListening(false);
+        setVoiceProcessing(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+      setIsListening(false);
+      setVoiceProcessing(false);
+    }
   };
 
   const checkedItems = items.filter((item) => item.is_checked);
@@ -288,14 +345,23 @@ export function ShoppingList() {
       {/* Floating buttons */}
       <div className="fixed bottom-24 left-0 right-0 px-4 flex flex-col items-end gap-3 pointer-events-none z-40">
         <div className="max-w-md mx-auto w-full flex flex-col items-end gap-3">
-          {/* Add button */}
-          <button
-            onClick={() => setShowAddDialog(true)}
-            className="pointer-events-auto flex items-center gap-2 bg-[#3b82f6] text-white font-semibold py-3 px-5 rounded-full shadow-lg ios-button"
-          >
-            <span className="material-symbols-outlined text-xl">add</span>
-            <span>Añadir</span>
-          </button>
+          {/* Add button row */}
+          <div className="flex gap-2 w-full justify-end">
+            <button
+              onClick={startListening}
+              disabled={isListening || voiceProcessing}
+              className={`pointer-events-auto flex items-center justify-center gap-2 font-semibold h-12 px-5 rounded-full shadow-lg transition-colors ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-[#19331e] text-[#13ec37] border border-[#13ec37]/30 ios-button'}`}
+            >
+              <span className="material-symbols-outlined text-xl">{isListening ? 'graphic_eq' : 'mic'}</span>
+            </button>
+            <button
+              onClick={() => setShowAddDialog(true)}
+              className="pointer-events-auto flex items-center gap-2 bg-[#3b82f6] text-white font-semibold h-12 px-6 rounded-full shadow-lg ios-button"
+            >
+              <span className="material-symbols-outlined text-xl">add</span>
+              <span>Manual</span>
+            </button>
+          </div>
 
           {/* Compare button */}
           {pendingItems.length > 0 && (
@@ -470,6 +536,15 @@ export function ShoppingList() {
       {/* Comparison Modal */}
       {showComparison && (
         <ListComparison onClose={() => setShowComparison(false)} />
+      )}
+
+      {/* Voice Processing Overlay */}
+      {voiceProcessing && (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col items-center justify-center p-4 animate-in fade-in">
+          <span className="material-symbols-outlined text-6xl text-[#13ec37] animate-pulse">model_training</span>
+          <p className="text-[#13ec37] font-bold text-xl mt-6 text-center">Analizando tu voz con IA...</p>
+          <p className="text-[#92c99b]/60 text-sm mt-2 text-center">Convirtiendo a productos de la compra</p>
+        </div>
       )}
     </>
   );
