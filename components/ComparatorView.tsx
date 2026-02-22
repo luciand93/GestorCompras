@@ -114,19 +114,19 @@ export function ComparatorView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#102213] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#09090b] text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <span className="material-symbols-outlined text-4xl text-[#13ec37] animate-pulse">analytics</span>
-          <p className="text-[#92c99b]">Cargando catálogo...</p>
+          <span className="material-symbols-outlined text-4xl text-[#10b981] animate-pulse">analytics</span>
+          <p className="text-[#a1a1aa]">Cargando catálogo...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#102213] text-white pb-24">
+    <div className="min-h-screen bg-[#09090b] text-white pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-[#102213]/80 ios-blur border-b border-white/10">
+      <header className="sticky top-0 z-10 bg-[#09090b]/80 ios-blur border-b border-white/10">
         <div className="flex items-center justify-between p-4 max-w-md mx-auto">
           <h2 className="text-lg font-bold">Catálogo y Comparador</h2>
         </div>
@@ -134,18 +134,18 @@ export function ComparatorView() {
         {/* Buscador */}
         <div className="px-4 pb-4 max-w-md mx-auto">
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#92c99b]/60">search</span>
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#a1a1aa]/60">search</span>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar artículo..."
-              className="w-full pl-10 pr-4 py-3 bg-[#19331e] border border-[#13ec37]/20 rounded-xl text-white placeholder:text-[#92c99b]/40 focus:outline-none focus:ring-2 focus:ring-[#13ec37]"
+              className="w-full pl-10 pr-4 py-3 bg-[#18181b] border border-[#10b981]/20 rounded-xl text-white placeholder:text-[#a1a1aa]/40 focus:outline-none focus:ring-2 focus:ring-[#10b981]"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#92c99b]/60"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a1a1aa]/60"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -157,8 +157,8 @@ export function ComparatorView() {
       <main className="max-w-md mx-auto px-4 mt-6">
         {filteredArticles.length === 0 ? (
           <div className="text-center py-12">
-            <span className="material-symbols-outlined text-5xl text-[#92c99b]/30 mb-4">search_off</span>
-            <p className="text-[#92c99b]">No se encontraron artículos.</p>
+            <span className="material-symbols-outlined text-5xl text-[#a1a1aa]/30 mb-4">search_off</span>
+            <p className="text-[#a1a1aa]">No se encontraron artículos.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -166,7 +166,7 @@ export function ComparatorView() {
               const isExpanded = expandedId === article.id;
 
               return (
-                <div key={article.id} className="bg-[#19331e] border border-[#13ec37]/20 rounded-xl overflow-hidden shadow-lg transition-all duration-300">
+                <div key={article.id} className="bg-[#18181b] border border-[#10b981]/20 rounded-xl overflow-hidden shadow-lg transition-all duration-300">
                   {/* Fila del artículo madre (Colapsada/Expandida) */}
                   <div
                     className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
@@ -178,10 +178,10 @@ export function ComparatorView() {
                           <input
                             value={motherEditVal}
                             onChange={e => setMotherEditVal(e.target.value)}
-                            className="bg-[#102213] text-white font-bold px-2 py-1 rounded border border-[#13ec37]/50 w-full focus:outline-none focus:ring-1 focus:ring-[#13ec37]"
+                            className="bg-[#09090b] text-white font-bold px-2 py-1 rounded border border-[#10b981]/50 w-full focus:outline-none focus:ring-1 focus:ring-[#10b981]"
                             autoFocus
                           />
-                          <button onClick={() => saveMother(article.id)} className="text-[#13ec37] shrink-0"><span className="material-symbols-outlined text-xl">check_circle</span></button>
+                          <button onClick={() => saveMother(article.id)} className="text-[#10b981] shrink-0"><span className="material-symbols-outlined text-xl">check_circle</span></button>
                           <button onClick={() => setEditingMotherId(null)} className="text-red-400 shrink-0"><span className="material-symbols-outlined text-xl">cancel</span></button>
                         </div>
                       ) : (
@@ -198,8 +198,8 @@ export function ComparatorView() {
 
                       {!isExpanded && article.bestPrice !== undefined && (
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[#13ec37] font-black">{article.bestPrice.toFixed(2)}€</span>
-                          <span className="text-xs text-[#92c99b] px-2 py-0.5 rounded-full bg-[#102213]/80 border border-[#13ec37]/30 flex items-center gap-1">
+                          <span className="text-[#10b981] font-black">{article.bestPrice.toFixed(2)}€</span>
+                          <span className="text-xs text-[#a1a1aa] px-2 py-0.5 rounded-full bg-[#09090b]/80 border border-[#10b981]/30 flex items-center gap-1">
                             <span className="material-symbols-outlined text-[12px]">{getStoreIcon(article.bestSupermarket || '')}</span>
                             {article.bestSupermarket}
                           </span>
@@ -211,7 +211,7 @@ export function ComparatorView() {
                     </div>
 
                     <div className="flex flex-col items-end">
-                      <button className="text-[#13ec37] p-1 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : article.id); }}>
+                      <button className="text-[#10b981] p-1 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : article.id); }}>
                         <span className={`material-symbols-outlined transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
                       </button>
                     </div>
@@ -219,11 +219,11 @@ export function ComparatorView() {
 
                   {/* Detalle expandido */}
                   {isExpanded && (
-                    <div className="bg-[#102213] px-4 py-5 border-t border-[#13ec37]/20 flex flex-col gap-6 slide-in-from-top-2 animate-in">
+                    <div className="bg-[#09090b] px-4 py-5 border-t border-[#10b981]/20 flex flex-col gap-6 slide-in-from-top-2 animate-in">
 
                       {/* Alias de este artículo */}
                       <div>
-                        <h4 className="text-xs font-bold text-[#92c99b] uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-3 flex items-center gap-2">
                           <span className="material-symbols-outlined text-sm">badge</span>
                           Alias en tickets
                         </h4>
@@ -232,22 +232,22 @@ export function ComparatorView() {
                         ) : (
                           <ul className="flex flex-col gap-2">
                             {article.aliases.map(al => (
-                              <li key={al.id} className="flex flex-col bg-[#19331e] rounded-lg p-3 text-sm border-l-2 border-amber-500/50">
+                              <li key={al.id} className="flex flex-col bg-[#18181b] rounded-lg p-3 text-sm border-l-2 border-amber-500/50">
                                 {editingAliasId === al.id ? (
                                   <div className="flex items-center gap-2 w-full">
                                     <input
                                       value={aliasEditVal}
                                       onChange={e => setAliasEditVal(e.target.value)}
-                                      className="bg-[#102213] text-amber-400 font-medium px-2 py-1.5 rounded border border-amber-500/50 flex-1 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                      className="bg-[#09090b] text-amber-400 font-medium px-2 py-1.5 rounded border border-amber-500/50 flex-1 focus:outline-none focus:ring-1 focus:ring-amber-500"
                                       autoFocus
                                     />
-                                    <button onClick={() => saveAlias(al.id)} className="text-[#13ec37] active:scale-90 transition-transform"><span className="material-symbols-outlined">check_circle</span></button>
+                                    <button onClick={() => saveAlias(al.id)} className="text-[#10b981] active:scale-90 transition-transform"><span className="material-symbols-outlined">check_circle</span></button>
                                   </div>
                                 ) : (
                                   <div className="flex items-start justify-between">
                                     <div className="flex flex-col">
                                       <span className="text-amber-400 font-bold mb-0.5">{al.alias_name}</span>
-                                      <div className="flex items-center gap-1 text-[11px] text-[#92c99b]">
+                                      <div className="flex items-center gap-1 text-[11px] text-[#a1a1aa]">
                                         <span className="material-symbols-outlined text-[12px]">{getStoreIcon(al.supermarket_name)}</span>
                                         {al.supermarket_name}
                                       </div>
@@ -266,7 +266,7 @@ export function ComparatorView() {
 
                       {/* Lista de precios identificados */}
                       <div>
-                        <h4 className="text-xs font-bold text-[#92c99b] uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-3 flex items-center gap-2">
                           <span className="material-symbols-outlined text-sm">payments</span>
                           Precios
                         </h4>
@@ -277,13 +277,13 @@ export function ComparatorView() {
                             {article.prices.map(pr => {
                               const isBest = pr.price === article.bestPrice;
                               return (
-                                <li key={pr.id} className={`flex items-center justify-between rounded-lg p-3 text-sm border-l-2 ${isBest ? 'bg-[#19331e] border-[#13ec37]' : 'bg-[#19331e] border-[#92c99b]/30 opacity-70'}`}>
+                                <li key={pr.id} className={`flex items-center justify-between rounded-lg p-3 text-sm border-l-2 ${isBest ? 'bg-[#18181b] border-[#10b981]' : 'bg-[#18181b] border-[#a1a1aa]/30 opacity-70'}`}>
                                   <div className="flexflex-col max-w-[50%]">
                                     <div className="flex items-center gap-1.5 font-bold mb-0.5">
                                       <span className="material-symbols-outlined text-lg text-white/50">{getStoreIcon(pr.supermarket_name)}</span>
                                       <span className="truncate">{pr.supermarket_name}</span>
                                     </div>
-                                    {isBest && <span className="text-[10px] uppercase font-black bg-[#13ec37]/20 text-[#13ec37] px-1.5 py-0.5 rounded tracking-wider">Mejor Precio</span>}
+                                    {isBest && <span className="text-[10px] uppercase font-black bg-[#10b981]/20 text-[#10b981] px-1.5 py-0.5 rounded tracking-wider">Mejor Precio</span>}
                                   </div>
 
                                   {editingPriceId === pr.id ? (
@@ -292,14 +292,14 @@ export function ComparatorView() {
                                         type="number" step="0.01"
                                         value={priceEditVal}
                                         onChange={e => setPriceEditVal(e.target.value)}
-                                        className="bg-[#102213] text-[#13ec37] font-black w-20 text-right px-2 py-1.5 rounded border border-[#13ec37]/50 focus:outline-none focus:ring-1 focus:ring-[#13ec37]"
+                                        className="bg-[#09090b] text-[#10b981] font-black w-20 text-right px-2 py-1.5 rounded border border-[#10b981]/50 focus:outline-none focus:ring-1 focus:ring-[#10b981]"
                                         autoFocus
                                       />
-                                      <button onClick={() => savePrice(pr.id)} className="text-[#13ec37] active:scale-90 transition-transform"><span className="material-symbols-outlined">check_circle</span></button>
+                                      <button onClick={() => savePrice(pr.id)} className="text-[#10b981] active:scale-90 transition-transform"><span className="material-symbols-outlined">check_circle</span></button>
                                     </div>
                                   ) : (
                                     <div className="flex items-end gap-3 flex-col sm:flex-row sm:items-center">
-                                      <span className={`font-black text-xl ${isBest ? 'text-[#13ec37]' : 'text-white'}`}>
+                                      <span className={`font-black text-xl ${isBest ? 'text-[#10b981]' : 'text-white'}`}>
                                         {pr.price.toFixed(2)}€
                                       </span>
                                       <div className="flex items-center gap-1 mt-1 sm:mt-0">

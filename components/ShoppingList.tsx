@@ -14,10 +14,14 @@ import { searchProducts, getRecentProducts } from "@/app/actions/products";
 import { getAllProducts } from "@/app/actions/prices";
 import { parseVoiceShoppingList } from "@/app/actions/voice-parser";
 import { ListComparison } from "./ListComparison";
-import type { ShoppingListItem } from "@/lib/supabase";
+import type { ShoppingListItem as IShoppingListItem } from "@/lib/supabase";
+import { ShoppingListItem } from "./ShoppingListItem";
+import { getCategoryForProduct } from "@/utils/category";
+import { hapticFeedback } from "@/utils/haptics";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function ShoppingList() {
-  const [items, setItems] = useState<ShoppingListItem[]>([]);
+  const [items, setItems] = useState<IShoppingListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -31,6 +35,7 @@ export function ShoppingList() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceProcessing, setVoiceProcessing] = useState(false);
+  const [speedDialOpen, setSpeedDialOpen] = useState(false);
 
   const loadItems = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -138,6 +143,7 @@ export function ShoppingList() {
   };
 
   const handleQuickAdd = async (productName: string) => {
+    hapticFeedback.light();
     const { error } = await addToShoppingList(productName, 1);
     if (!error) await loadItems();
   };
@@ -167,12 +173,14 @@ export function ShoppingList() {
 
         const result = await parseVoiceShoppingList(transcript);
         if (result.items && result.items.length > 0) {
+          hapticFeedback.success();
           for (const item of result.items) {
             await addToShoppingList(item.name, item.quantity);
           }
           await loadItems();
           await loadRecentProducts();
         } else if (result.error) {
+          hapticFeedback.error();
           alert('Error: ' + result.error);
         }
         setVoiceProcessing(false);
@@ -199,13 +207,36 @@ export function ShoppingList() {
   const checkedItems = items.filter((item) => item.is_checked);
   const pendingItems = items.filter((item) => !item.is_checked);
 
+  // Group pending items by category
+  const groupedPending: Record<string, IShoppingListItem[]> = {};
+  pendingItems.forEach(item => {
+    const cat = getCategoryForProduct(item.product_name);
+    if (!groupedPending[cat]) groupedPending[cat] = [];
+    groupedPending[cat].push(item);
+  });
+
+  const handleAddQuantity = async (id: string) => {
+    const item = items.find(i => i.id === id);
+    if (item) {
+      setItems(items.map(it => it.id === id ? { ...it, quantity: it.quantity + 1 } : it));
+      await addToShoppingList(item.product_name, 1); // addToShoppingList basically updates quantity if exists
+      loadItems(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="flex flex-col items-center gap-3">
-          <span className="material-symbols-outlined text-4xl text-[#13ec37] animate-pulse">shopping_cart</span>
-          <p className="text-[#92c99b]">Cargando...</p>
-        </div>
+      <div className="flex flex-col gap-4 px-4 py-8 animate-in fade-in">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="bg-[#18181b] rounded-xl h-20 w-full animate-pulse border border-[#10b981]/5 flex items-center px-4 gap-4">
+            <div className="w-6 h-6 rounded-full bg-zinc-800"></div>
+            <div className="flex flex-col gap-2 w-full">
+              <div className="h-4 w-3/4 bg-zinc-800 rounded"></div>
+              <div className="h-3 w-1/3 bg-zinc-800 rounded"></div>
+            </div>
+          </div>
+        ))}
+        <p className="text-center text-[#a1a1aa]/50 mt-4 text-sm font-medium">Sincronizando mágicamente...</p>
       </div>
     );
   }
@@ -228,13 +259,13 @@ export function ShoppingList() {
       {/* Quick add chips */}
       {recentProducts.length > 0 && pendingItems.length < 3 && (
         <div className="px-4 mb-4">
-          <p className="text-xs font-semibold text-[#92c99b]/60 uppercase tracking-wider mb-2 px-1">Añadir rápido</p>
+          <p className="text-xs font-semibold text-[#a1a1aa]/60 uppercase tracking-wider mb-2 px-1">Añadir rápido</p>
           <div className="flex flex-wrap gap-2">
             {recentProducts.slice(0, 5).map((product) => (
               <button
                 key={product}
                 onClick={() => handleQuickAdd(product)}
-                className="px-3 py-1.5 text-sm bg-[#19331e] border border-[#13ec37]/20 rounded-full hover:border-[#13ec37] hover:text-[#13ec37] transition-colors ios-button text-white"
+                className="px-3 py-1.5 text-sm bg-[#18181b] border border-[#10b981]/20 rounded-full hover:border-[#10b981] hover:text-[#10b981] transition-colors ios-button text-white"
               >
                 + {product}
               </button>
@@ -249,7 +280,7 @@ export function ShoppingList() {
           <div className="flex justify-end mb-2">
             <button
               onClick={() => setShowClearDialog(true)}
-              className="flex items-center gap-1 text-sm text-[#92c99b]/60 hover:text-red-400 transition-colors"
+              className="flex items-center gap-1 text-sm text-[#a1a1aa]/60 hover:text-red-400 transition-colors"
             >
               <span className="material-symbols-outlined text-lg">refresh</span>
               Nueva lista
@@ -257,37 +288,30 @@ export function ShoppingList() {
           </div>
         )}
 
-        {/* Pending section */}
-        {pendingItems.length > 0 && (
+        {/* Pending section Grouped */}
+        {Object.keys(groupedPending).length > 0 && (
           <section className="mb-6">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="text-xs font-semibold text-[#92c99b]/60 uppercase tracking-wider">Pendientes</h3>
-              <span className="text-xs text-[#92c99b]/40">{pendingItems.length} artículos</span>
-            </div>
-            <div className="bg-[#19331e] rounded-xl overflow-hidden border border-[#13ec37]/10 divide-y divide-[#13ec37]/10">
-              {pendingItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 p-4 active:bg-[#13ec37]/5 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={item.is_checked}
-                    onChange={() => handleToggleChecked(item.id, item.is_checked)}
-                    className="ios-checkbox"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[17px] font-medium leading-snug truncate text-white">{item.product_name}</p>
-                    {item.quantity > 1 && (
-                      <p className="text-sm text-[#92c99b]/60">{item.quantity} unidades</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="text-[#92c99b]/30 hover:text-red-400 transition-colors p-1"
-                  >
-                    <span className="material-symbols-outlined">delete</span>
-                  </button>
+            {Object.entries(groupedPending).map(([cat, catsItems]) => (
+              <div key={cat} className="mb-4">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <h3 className="text-xs font-black text-[#10b981] uppercase tracking-wider">{cat}</h3>
+                  <span className="text-xs text-[#a1a1aa] font-medium">{catsItems.length} artículos</span>
                 </div>
-              ))}
-            </div>
+                <div className="bg-[#18181b] rounded-xl border border-[#10b981]/10 flex flex-col overflow-hidden">
+                  <AnimatePresence initial={false}>
+                    {catsItems.map((item) => (
+                      <ShoppingListItem
+                        key={item.id}
+                        item={item}
+                        onToggle={handleToggleChecked}
+                        onDelete={handleDeleteItem}
+                        onAddQuantity={handleAddQuantity}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            ))}
           </section>
         )}
 
@@ -295,45 +319,33 @@ export function ShoppingList() {
         {checkedItems.length > 0 && (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="text-xs font-semibold text-[#92c99b]/60 uppercase tracking-wider">Completados</h3>
-              <span className="text-xs text-[#92c99b]/40">{checkedItems.length} artículos</span>
+              <h3 className="text-xs font-semibold text-[#a1a1aa]/60 uppercase tracking-wider">Completados</h3>
+              <span className="text-xs text-[#a1a1aa]/40">{checkedItems.length} artículos</span>
             </div>
-            <div className="bg-[#19331e]/50 rounded-xl overflow-hidden border border-[#13ec37]/5 divide-y divide-[#13ec37]/5">
-              {checkedItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 p-4 opacity-50">
-                  <input
-                    type="checkbox"
-                    checked={item.is_checked}
-                    onChange={() => handleToggleChecked(item.id, item.is_checked)}
-                    className="ios-checkbox"
+            <div className="bg-[#18181b]/50 rounded-xl overflow-hidden border border-[#10b981]/5 flex flex-col">
+              <AnimatePresence>
+                {checkedItems.map((item) => (
+                  <ShoppingListItem
+                    key={item.id}
+                    item={item}
+                    onToggle={handleToggleChecked}
+                    onDelete={handleDeleteItem}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[17px] font-medium line-through text-[#92c99b]/60 truncate">{item.product_name}</p>
-                    {item.quantity > 1 && (
-                      <p className="text-sm text-[#92c99b]/40">{item.quantity} unidades</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="text-[#92c99b]/20 p-1"
-                  >
-                    <span className="material-symbols-outlined">delete</span>
-                  </button>
-                </div>
-              ))}
+                ))}
+              </AnimatePresence>
             </div>
           </section>
         )}
 
         {/* Empty state */}
         {items.length === 0 && (
-          <div className="bg-[#19331e] rounded-xl border border-[#13ec37]/10 py-16 px-6 text-center">
-            <span className="material-symbols-outlined text-6xl text-[#92c99b]/20 mb-4">shopping_bag</span>
-            <p className="text-lg font-semibold text-[#92c99b]/60 mb-2">Tu lista está vacía</p>
-            <p className="text-sm text-[#92c99b]/40 mb-6">Añade productos para empezar</p>
+          <div className="bg-[#18181b] rounded-xl border border-[#10b981]/10 py-16 px-6 text-center">
+            <span className="material-symbols-outlined text-6xl text-[#a1a1aa]/20 mb-4">shopping_bag</span>
+            <p className="text-lg font-semibold text-[#a1a1aa]/60 mb-2">Tu lista está vacía</p>
+            <p className="text-sm text-[#a1a1aa]/40 mb-6">Añade productos para empezar</p>
             <button
               onClick={() => setShowAddDialog(true)}
-              className="inline-flex items-center gap-2 bg-[#13ec37] text-[#102213] font-bold py-3 px-6 rounded-xl ios-button"
+              className="inline-flex items-center gap-2 bg-[#10b981] text-[#09090b] font-bold py-3 px-6 rounded-xl ios-button"
             >
               <span className="material-symbols-outlined">add</span>
               Añadir producto
@@ -345,21 +357,41 @@ export function ShoppingList() {
       {/* Floating buttons */}
       <div className="fixed bottom-24 left-0 right-0 px-4 flex flex-col items-end gap-3 pointer-events-none z-40">
         <div className="max-w-md mx-auto w-full flex flex-col items-end gap-3">
-          {/* Add button row */}
-          <div className="flex gap-2 w-full justify-end">
+          {/* Speed Dial Actions */}
+          <AnimatePresence>
+            {speedDialOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 30, scale: 0.8 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 30, scale: 0.8 }}
+                className="flex flex-col gap-3 w-full items-end pb-3 blur-backdrop"
+              >
+                <button
+                  onClick={() => { setSpeedDialOpen(false); startListening(); }}
+                  disabled={isListening || voiceProcessing}
+                  className={`pointer-events-auto flex w-48 items-center justify-between font-semibold h-12 px-5 rounded-full shadow-lg transition-all ${isListening ? 'bg-red-500 text-white animate-pulse scale-105' : 'bg-[#18181b] text-[#10b981] border border-[#10b981]/30 hover:bg-[#10b981]/10'}`}
+                >
+                  <span>{isListening ? 'Escuchando...' : 'IA por Voz'}</span>
+                  <span className="material-symbols-outlined text-xl">{isListening ? 'graphic_eq' : 'mic'}</span>
+                </button>
+                <button
+                  onClick={() => { setSpeedDialOpen(false); setShowAddDialog(true); }}
+                  className="pointer-events-auto flex w-48 items-center justify-between bg-blue-500 text-white font-semibold h-12 px-5 rounded-full shadow-lg"
+                >
+                  <span>Escritura manual</span>
+                  <span className="material-symbols-outlined text-xl">keyboard</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Main FAB directly replaces to open dial */}
+          <div className="flex w-full justify-end">
             <button
-              onClick={startListening}
-              disabled={isListening || voiceProcessing}
-              className={`pointer-events-auto flex items-center justify-center gap-2 font-semibold h-12 px-5 rounded-full shadow-lg transition-colors ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-[#19331e] text-[#13ec37] border border-[#13ec37]/30 ios-button'}`}
+              onClick={() => { hapticFeedback.light(); setSpeedDialOpen(!speedDialOpen); }}
+              className={`pointer-events-auto flex items-center justify-center w-14 h-14 rounded-full shadow-xl transition-all duration-300 ${speedDialOpen ? 'bg-zinc-800 text-white border border-white/20 rotate-45' : 'bg-[#10b981] text-[#09090b]'}`}
             >
-              <span className="material-symbols-outlined text-xl">{isListening ? 'graphic_eq' : 'mic'}</span>
-            </button>
-            <button
-              onClick={() => setShowAddDialog(true)}
-              className="pointer-events-auto flex items-center gap-2 bg-[#3b82f6] text-white font-semibold h-12 px-6 rounded-full shadow-lg ios-button"
-            >
-              <span className="material-symbols-outlined text-xl">add</span>
-              <span>Manual</span>
+              <span className="material-symbols-outlined text-3xl font-light">add</span>
             </button>
           </div>
 
@@ -378,7 +410,7 @@ export function ShoppingList() {
           {checkedItems.length > 0 && (
             <button
               onClick={handleFinalizePurchase}
-              className="pointer-events-auto w-full flex items-center justify-center gap-2 bg-[#13ec37] text-[#102213] font-bold text-[17px] py-4 rounded-2xl shadow-xl ios-button"
+              className="pointer-events-auto w-full flex items-center justify-center gap-2 bg-[#10b981] text-[#09090b] font-bold text-[17px] py-4 rounded-2xl shadow-xl ios-button"
               style={{ boxShadow: '0 0 20px rgba(19, 236, 55, 0.3)' }}
             >
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart_checkout</span>
@@ -392,34 +424,34 @@ export function ShoppingList() {
       {showAddDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowAddDialog(false)} />
-          <div className="relative w-full max-w-md bg-[#102213] rounded-2xl shadow-2xl border border-[#13ec37]/20 max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-[#102213] p-4 border-b border-[#13ec37]/10 flex items-center justify-between">
+          <div className="relative w-full max-w-md bg-[#09090b] rounded-2xl shadow-2xl border border-[#10b981]/20 max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-[#09090b] p-4 border-b border-[#10b981]/10 flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">Añadir Producto</h2>
-              <button onClick={() => setShowAddDialog(false)} className="text-[#92c99b] p-1">
+              <button onClick={() => setShowAddDialog(false)} className="text-[#a1a1aa] p-1">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="p-4">
 
               <div className="relative mb-4">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#92c99b]/60">search</span>
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#a1a1aa]/60">search</span>
                 <input
                   type="text"
                   value={newItemName}
                   onChange={(e) => handleInputChange(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
                   placeholder="Buscar o escribir producto..."
-                  className="w-full pl-10 pr-4 py-3 text-lg border border-[#13ec37]/20 rounded-xl bg-[#19331e] text-white placeholder:text-[#92c99b]/40 focus:outline-none focus:ring-2 focus:ring-[#13ec37]"
+                  className="w-full pl-10 pr-4 py-3 text-lg border border-[#10b981]/20 rounded-xl bg-[#18181b] text-white placeholder:text-[#a1a1aa]/40 focus:outline-none focus:ring-2 focus:ring-[#10b981]"
                   autoFocus
                 />
 
                 {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-2 bg-[#19331e] rounded-xl shadow-lg border border-[#13ec37]/20 overflow-hidden">
+                  <div className="absolute z-10 w-full mt-2 bg-[#18181b] rounded-xl shadow-lg border border-[#10b981]/20 overflow-hidden">
                     {suggestions.map((s, i) => (
                       <button
                         key={i}
                         onClick={() => handleSelectSuggestion(s)}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-[#13ec37]/10 border-b last:border-b-0 border-[#13ec37]/10"
+                        className="w-full px-4 py-3 text-left text-white hover:bg-[#10b981]/10 border-b last:border-b-0 border-[#10b981]/10"
                       >
                         {s}
                       </button>
@@ -432,13 +464,13 @@ export function ShoppingList() {
                 <div className="mb-4 max-h-[40vh] overflow-y-auto pr-1">
                   {recentProducts.length > 0 && (
                     <div className="mb-5">
-                      <p className="text-sm font-medium text-[#92c99b]/60 mb-2">Añadidos recientemente:</p>
+                      <p className="text-sm font-medium text-[#a1a1aa]/60 mb-2">Añadidos recientemente:</p>
                       <div className="flex flex-wrap gap-2">
                         {recentProducts.slice(0, 6).map((p) => (
                           <button
                             key={p}
                             onClick={() => setNewItemName(p)}
-                            className="px-3 py-1.5 text-sm bg-[#13ec37]/10 text-white rounded-full border border-[#13ec37]/20 hover:bg-[#13ec37]/20 transition-colors"
+                            className="px-3 py-1.5 text-sm bg-[#10b981]/10 text-white rounded-full border border-[#10b981]/20 hover:bg-[#10b981]/20 transition-colors"
                           >
                             {p}
                           </button>
@@ -448,7 +480,7 @@ export function ShoppingList() {
                   )}
                   {motherArticles.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-[#92c99b]/60 mb-2">Catálogo de Artículos:</p>
+                      <p className="text-sm font-medium text-[#a1a1aa]/60 mb-2">Catálogo de Artículos:</p>
                       <div className="grid grid-cols-2 gap-2">
                         {motherArticles.map((p, i) => (
                           <button
@@ -467,11 +499,11 @@ export function ShoppingList() {
               )}
 
               <div className="mb-6">
-                <label className="text-sm font-medium mb-2 block text-[#92c99b]/60">Cantidad</label>
+                <label className="text-sm font-medium mb-2 block text-[#a1a1aa]/60">Cantidad</label>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setNewItemQuantity(Math.max(1, newItemQuantity - 1))}
-                    className="w-12 h-12 rounded-xl border border-[#13ec37]/20 text-xl font-bold text-white hover:bg-[#13ec37]/10"
+                    className="w-12 h-12 rounded-xl border border-[#10b981]/20 text-xl font-bold text-white hover:bg-[#10b981]/10"
                   >
                     -
                   </button>
@@ -480,11 +512,11 @@ export function ShoppingList() {
                     value={newItemQuantity}
                     onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
                     min="1"
-                    className="flex-1 px-4 py-3 text-lg text-center border border-[#13ec37]/20 rounded-xl bg-[#19331e] text-white"
+                    className="flex-1 px-4 py-3 text-lg text-center border border-[#10b981]/20 rounded-xl bg-[#18181b] text-white"
                   />
                   <button
                     onClick={() => setNewItemQuantity(newItemQuantity + 1)}
-                    className="w-12 h-12 rounded-xl border border-[#13ec37]/20 text-xl font-bold text-white hover:bg-[#13ec37]/10"
+                    className="w-12 h-12 rounded-xl border border-[#10b981]/20 text-xl font-bold text-white hover:bg-[#10b981]/10"
                   >
                     +
                   </button>
@@ -495,7 +527,7 @@ export function ShoppingList() {
               <button
                 onClick={handleAddItem}
                 disabled={!newItemName.trim()}
-                className="w-full py-4 rounded-xl bg-[#13ec37] text-[#102213] font-bold text-lg disabled:opacity-50 ios-button shadow-lg flex items-center justify-center gap-2"
+                className="w-full py-4 rounded-xl bg-[#10b981] text-[#09090b] font-bold text-lg disabled:opacity-50 ios-button shadow-lg flex items-center justify-center gap-2"
                 style={{ boxShadow: '0 0 20px rgba(19, 236, 55, 0.3)' }}
               >
                 <span className="material-symbols-outlined">add_circle</span>
@@ -510,15 +542,15 @@ export function ShoppingList() {
       {showClearDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowClearDialog(false)} />
-          <div className="relative w-full max-w-sm bg-[#102213] rounded-2xl shadow-2xl border border-[#13ec37]/10 p-6">
+          <div className="relative w-full max-w-sm bg-[#09090b] rounded-2xl shadow-2xl border border-[#10b981]/10 p-6">
             <h2 className="text-xl font-bold mb-2 text-white">¿Vaciar lista?</h2>
-            <p className="text-[#92c99b]/60 mb-6">
+            <p className="text-[#a1a1aa]/60 mb-6">
               Se eliminarán {items.length} productos. Los precios guardados se mantendrán.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowClearDialog(false)}
-                className="flex-1 py-3 rounded-xl border border-[#13ec37]/20 font-semibold text-white"
+                className="flex-1 py-3 rounded-xl border border-[#10b981]/20 font-semibold text-white"
               >
                 Cancelar
               </button>
@@ -541,9 +573,9 @@ export function ShoppingList() {
       {/* Voice Processing Overlay */}
       {voiceProcessing && (
         <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col items-center justify-center p-4 animate-in fade-in">
-          <span className="material-symbols-outlined text-6xl text-[#13ec37] animate-pulse">model_training</span>
-          <p className="text-[#13ec37] font-bold text-xl mt-6 text-center">Analizando tu voz con IA...</p>
-          <p className="text-[#92c99b]/60 text-sm mt-2 text-center">Convirtiendo a productos de la compra</p>
+          <span className="material-symbols-outlined text-6xl text-[#10b981] animate-pulse">model_training</span>
+          <p className="text-[#10b981] font-bold text-xl mt-6 text-center">Analizando tu voz con IA...</p>
+          <p className="text-[#a1a1aa]/60 text-sm mt-2 text-center">Convirtiendo a productos de la compra</p>
         </div>
       )}
     </>

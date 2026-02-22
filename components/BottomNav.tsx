@@ -16,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a1a0d]/95 ios-blur border-t border-[#13ec37]/10 safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a1a0d]/95 ios-blur border-t border-[#10b981]/10 safe-area-bottom">
       <div className="max-w-md mx-auto flex items-center justify-around py-2 px-6">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -28,8 +28,8 @@ export function BottomNav() {
               className={cn(
                 "flex flex-col items-center gap-1 py-2 px-4 transition-all ios-button",
                 isActive
-                  ? "text-[#13ec37]"
-                  : "text-[#92c99b]/60 hover:text-[#92c99b]"
+                  ? "text-[#10b981]"
+                  : "text-[#a1a1aa]/60 hover:text-[#a1a1aa]"
               )}
             >
               <span
@@ -48,7 +48,7 @@ export function BottomNav() {
           );
         })}
       </div>
-      <div className="absolute top-0 right-2 -mt-4 bg-[#13ec37]/10 px-1.5 py-0.5 rounded text-[8px] font-mono text-[#92c99b]/40 backdrop-blur-sm pointer-events-none">
+      <div className="absolute top-0 right-2 -mt-4 bg-[#10b981]/10 px-1.5 py-0.5 rounded text-[8px] font-mono text-[#a1a1aa]/40 backdrop-blur-sm pointer-events-none">
         v{pkg.version}
       </div>
     </nav>

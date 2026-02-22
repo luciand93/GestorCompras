@@ -248,9 +248,9 @@ export function ScannerView() {
   const currentEditingItem = editingItemIndex !== null ? scannedItems[editingItemIndex] : null;
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#102213] text-white">
+    <div className="flex flex-col min-h-screen bg-[#09090b] text-white">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-[#102213]/80 ios-blur p-4 pb-2">
+      <header className="sticky top-0 z-10 bg-[#09090b]/80 ios-blur p-4 pb-2">
         <h1 className="text-lg font-bold text-center">Escáner de Precios</h1>
       </header>
 
@@ -258,14 +258,14 @@ export function ScannerView() {
       <div className="flex gap-3 px-4 py-3">
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex-1 flex items-center justify-center gap-2 h-12 px-5 bg-[#13ec37]/20 text-[#13ec37] border border-[#13ec37]/30 rounded-xl font-bold ios-button"
+          className="flex-1 flex items-center justify-center gap-2 h-12 px-5 bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30 rounded-xl font-bold ios-button"
         >
           <span className="material-symbols-outlined">photo_library</span>
           <span>Galería</span>
         </button>
         <button
           onClick={() => cameraInputRef.current?.click()}
-          className="flex-1 flex items-center justify-center gap-2 h-12 px-5 rounded-xl font-bold ios-button bg-[#13ec37] text-[#102213] shadow-lg shadow-[#13ec37]/30"
+          className="flex-1 flex items-center justify-center gap-2 h-12 px-5 rounded-xl font-bold ios-button bg-[#10b981] text-[#09090b] shadow-lg shadow-[#10b981]/30"
         >
           <span className="material-symbols-outlined">photo_camera</span>
           <span>Cámara</span>
@@ -277,10 +277,10 @@ export function ScannerView() {
 
       {/* Floating badge para fotos capturadas y botón procesar */}
       {capturedImages.length > 0 && !showResults && !isProcessing && (
-        <div className="mx-4 mb-4 flex flex-col gap-3 bg-[#19331e] p-4 rounded-xl border border-[#13ec37]/30 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+        <div className="mx-4 mb-4 flex flex-col gap-3 bg-[#18181b] p-4 rounded-xl border border-[#10b981]/30 shadow-lg animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#13ec37]">imagesmode</span>
+              <span className="material-symbols-outlined text-[#10b981]">imagesmode</span>
               <span className="font-bold text-sm text-white">
                 {capturedImages.length} {capturedImages.length === 1 ? 'foto lista' : 'fotos listas'}
               </span>
@@ -296,14 +296,14 @@ export function ScannerView() {
           <div className="flex gap-2 w-full mt-1">
             <button
               onClick={() => cameraInputRef.current?.click()}
-              className="flex-1 py-2.5 bg-[#13ec37]/20 border border-[#13ec37]/50 text-[#13ec37] rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+              className="flex-1 py-2.5 bg-[#10b981]/20 border border-[#10b981]/50 text-[#10b981] rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
             >
               <span className="material-symbols-outlined text-[20px]">add_a_photo</span>
               Otra foto
             </button>
             <button
               onClick={processImages}
-              className="flex-[1.5] py-2.5 bg-[#13ec37] text-[#102213] rounded-xl text-base font-black flex items-center justify-center gap-2 shadow-md shadow-[#13ec37]/20 active:scale-95 transition-transform"
+              className="flex-[1.5] py-2.5 bg-[#10b981] text-[#09090b] rounded-xl text-base font-black flex items-center justify-center gap-2 shadow-md shadow-[#10b981]/20 active:scale-95 transition-transform"
             >
               Procesar IA <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
             </button>
@@ -314,8 +314,8 @@ export function ScannerView() {
       {/* Empty state / placeholder */}
       {!isProcessing && capturedImages.length === 0 && !showResults && (
         <div className="flex-1 px-4 py-2">
-          <div className="relative h-full min-h-[300px] rounded-3xl overflow-hidden border-2 border-[#13ec37]/20 bg-slate-900 border-dashed flex flex-col items-center justify-center opacity-40 p-6">
-            <span className="material-symbols-outlined text-8xl mb-4 text-[#13ec37]">receipt_long</span>
+          <div className="relative h-full min-h-[300px] rounded-3xl overflow-hidden border-2 border-[#10b981]/20 bg-slate-900 border-dashed flex flex-col items-center justify-center opacity-40 p-6">
+            <span className="material-symbols-outlined text-8xl mb-4 text-[#10b981]">receipt_long</span>
             <p className="text-center text-lg">Toca en la cámara para escanear tickets y extraer los precios</p>
           </div>
         </div>
@@ -323,10 +323,10 @@ export function ScannerView() {
 
       {/* Processing indicator */}
       {isProcessing && (
-        <div className="mx-4 mt-8 p-6 bg-[#13ec37]/10 border border-[#13ec37]/20 rounded-xl text-center">
-          <span className="material-symbols-outlined text-4xl text-[#13ec37] animate-spin mb-4 block mx-auto">progress_activity</span>
-          <p className="text-[#13ec37] font-bold text-lg">Procesando imagen con IA...</p>
-          <p className="text-[#13ec37]/70 text-sm mt-2">Buscando productos y precios</p>
+        <div className="mx-4 mt-8 p-6 bg-[#10b981]/10 border border-[#10b981]/20 rounded-xl text-center">
+          <span className="material-symbols-outlined text-4xl text-[#10b981] animate-spin mb-4 block mx-auto">progress_activity</span>
+          <p className="text-[#10b981] font-bold text-lg">Procesando imagen con IA...</p>
+          <p className="text-[#10b981]/70 text-sm mt-2">Buscando productos y precios</p>
         </div>
       )}
 
@@ -339,12 +339,12 @@ export function ScannerView() {
 
       {/* Results Full-Screen Modal */}
       {showResults && scannedItems.length > 0 && (
-        <div className="fixed inset-0 z-50 bg-[#102213] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-[#09090b] flex flex-col">
           {/* Header */}
-          <header className="sticky top-0 bg-[#0a150c] px-4 py-3 border-b border-[#13ec37]/20 flex items-center justify-between z-10 shadow-md">
+          <header className="sticky top-0 bg-[#0a150c] px-4 py-3 border-b border-[#10b981]/20 flex items-center justify-between z-10 shadow-md">
             <div>
               <h2 className="text-xl font-black text-white">Revisar Ticket</h2>
-              <p className="text-[#92c99b] text-xs font-semibold">{scannedItems.length} productos detectados</p>
+              <p className="text-[#a1a1aa] text-xs font-semibold">{scannedItems.length} productos detectados</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -356,9 +356,9 @@ export function ScannerView() {
               <button
                 onClick={handleSaveToDatabase}
                 disabled={savedSuccess || isSaving || !selectedStore}
-                className={`w-12 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-transform ${savedSuccess ? 'bg-[#92c99b] text-[#102213]' :
-                  selectedStore ? 'bg-[#13ec37] text-[#102213] shadow-[0_0_10px_rgba(19,236,55,0.3)] border border-[#13ec37]' :
-                    'bg-[#92c99b]/10 text-[#92c99b]/30 cursor-not-allowed border border-[#92c99b]/20'
+                className={`w-12 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-transform ${savedSuccess ? 'bg-[#a1a1aa] text-[#09090b]' :
+                  selectedStore ? 'bg-[#10b981] text-[#09090b] shadow-[0_0_10px_rgba(19,236,55,0.3)] border border-[#10b981]' :
+                    'bg-[#a1a1aa]/10 text-[#a1a1aa]/30 cursor-not-allowed border border-[#a1a1aa]/20'
                   }`}
               >
                 {isSaving ? (
@@ -371,7 +371,7 @@ export function ScannerView() {
           </header>
 
           {savedSuccess && (
-            <div className="bg-[#13ec37] text-[#102213] px-4 py-2 font-bold text-center flex items-center justify-center gap-2 text-sm animate-in slide-in-from-top-4">
+            <div className="bg-[#10b981] text-[#09090b] px-4 py-2 font-bold text-center flex items-center justify-center gap-2 text-sm animate-in slide-in-from-top-4">
               <span className="material-symbols-outlined text-base">task_alt</span>
               ¡Ticket guardado correctamente!
             </div>
@@ -386,17 +386,17 @@ export function ScannerView() {
           <div className="flex-1 overflow-y-auto px-4 pb-12">
             {/* Supermercado - Obligatorio */}
             <div className="mt-4 mb-6">
-              <label className="text-xs font-bold text-[#92c99b] uppercase tracking-wider mb-2 block">Establecimiento</label>
+              <label className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-2 block">Establecimiento</label>
               <button
                 onClick={() => setShowStoreSelector(true)}
                 className={`w-full p-4 rounded-2xl flex items-center justify-between shadow-sm active:scale-[98%] transition-transform ${selectedStore
-                  ? "bg-[#19331e] border border-[#13ec37]/40"
+                  ? "bg-[#18181b] border border-[#10b981]/40"
                   : "bg-amber-500/10 border-2 border-amber-500/50 animate-pulse"
                   }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedStore ? 'bg-[#13ec37]/20' : 'bg-amber-500/20'}`}>
-                    <span className={`material-symbols-outlined ${selectedStore ? 'text-[#13ec37]' : 'text-amber-500'}`}>storefront</span>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedStore ? 'bg-[#10b981]/20' : 'bg-amber-500/20'}`}>
+                    <span className={`material-symbols-outlined ${selectedStore ? 'text-[#10b981]' : 'text-amber-500'}`}>storefront</span>
                   </div>
                   <div className="text-left">
                     <p className={`font-bold ${selectedStore ? "text-white text-lg" : "text-amber-400 text-base"}`}>
@@ -407,15 +407,15 @@ export function ScannerView() {
                     )}
                   </div>
                 </div>
-                <span className="material-symbols-outlined text-[#92c99b]">edit</span>
+                <span className="material-symbols-outlined text-[#a1a1aa]">edit</span>
               </button>
             </div>
 
-            <label className="text-xs font-bold text-[#92c99b] uppercase tracking-wider mb-2 block">Productos a guardar</label>
-            <div className="w-full bg-[#0a150c] rounded-2xl border border-[#13ec37]/20 overflow-hidden shadow-lg mb-6">
+            <label className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-2 block">Productos a guardar</label>
+            <div className="w-full bg-[#0a150c] rounded-2xl border border-[#10b981]/20 overflow-hidden shadow-lg mb-6">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[#19331e]/50 text-[10px] text-[#92c99b] uppercase tracking-wider border-b border-[#13ec37]/20">
+                  <tr className="bg-[#18181b]/50 text-[10px] text-[#a1a1aa] uppercase tracking-wider border-b border-[#10b981]/20">
                     <th className="py-3 px-3 font-bold text-left">Artículo</th>
                     <th className="py-3 px-1 font-bold text-right">Cant / Und</th>
                     <th className="py-3 px-2 font-bold text-right pt-2 pb-2">Total</th>
@@ -426,7 +426,7 @@ export function ScannerView() {
                   {scannedItems.map((item, index) => {
                     const displayedMother = item.matchedProductName || item.customName || item.canonicalName || item.productName;
                     return (
-                      <tr key={index} className="border-b border-[#13ec37]/10 last:border-0 hover:bg-[#19331e] transition-colors relative">
+                      <tr key={index} className="border-b border-[#10b981]/10 last:border-0 hover:bg-[#18181b] transition-colors relative">
                         <td className="py-3 px-3 align-top min-w-[35%] max-w-[45%] overflow-hidden">
                           {/* Editable Mother Article trigger */}
                           <div
@@ -434,7 +434,7 @@ export function ScannerView() {
                             className="group cursor-pointer"
                           >
                             <div className="flex items-center gap-1.5 mb-1">
-                              <p className={`text-sm font-black leading-tight truncate ${item.matchedProductId ? 'text-[#13ec37]' : 'text-amber-400'}`}>
+                              <p className={`text-sm font-black leading-tight truncate ${item.matchedProductId ? 'text-[#10b981]' : 'text-amber-400'}`}>
                                 {displayedMother}
                               </p>
                               <span className="material-symbols-outlined text-[14px] text-white/20 group-hover:text-white/80 shrink-0">edit</span>
@@ -445,7 +445,7 @@ export function ScannerView() {
                                 <span className="text-[8px] bg-amber-400/20 border border-amber-400/30 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Nuevo catál.</span>
                               )}
                               {item.matchedProductId && (
-                                <span className="text-[8px] bg-[#13ec37]/10 border border-[#13ec37]/20 text-[#13ec37] px-1.5 py-0.5 rounded font-bold uppercase">Exist.</span>
+                                <span className="text-[8px] bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981] px-1.5 py-0.5 rounded font-bold uppercase">Exist.</span>
                               )}
                               {item.matchedProductId && inflationAlerts[item.matchedProductId] && (item.unitPrice > inflationAlerts[item.matchedProductId].minPrice * 1.15) && (
                                 <span
@@ -470,7 +470,7 @@ export function ScannerView() {
                                   const q = parseFloat(e.target.value) || 0;
                                   setScannedItems(items => items.map((it, i) => i === index ? { ...it, quantity: q, price: Math.round(q * it.unitPrice * 100) / 100 } : it));
                                 }}
-                                className="w-10 text-[11px] bg-[#19331e] border border-white/20 text-white font-medium text-center p-1 rounded focus:outline-none focus:border-[#13ec37]"
+                                className="w-10 text-[11px] bg-[#18181b] border border-white/20 text-white font-medium text-center p-1 rounded focus:outline-none focus:border-[#10b981]"
                               />
                               <span className="text-white/40 text-[10px]">x</span>
                             </div>
@@ -484,9 +484,9 @@ export function ScannerView() {
                                   const up = parseFloat(e.target.value) || 0;
                                   setScannedItems(items => items.map((it, i) => i === index ? { ...it, unitPrice: up, price: Math.round(it.quantity * up * 100) / 100 } : it));
                                 }}
-                                className="w-12 text-[11px] bg-[#19331e] border border-[#13ec37]/30 text-[#13ec37] font-bold text-right p-1 rounded focus:outline-none focus:border-[#13ec37]"
+                                className="w-12 text-[11px] bg-[#18181b] border border-[#10b981]/30 text-[#10b981] font-bold text-right p-1 rounded focus:outline-none focus:border-[#10b981]"
                               />
-                              <span className="text-[#13ec37]/70 font-bold text-[10px]">€</span>
+                              <span className="text-[#10b981]/70 font-bold text-[10px]">€</span>
                             </div>
                           </div>
                         </td>
@@ -503,9 +503,9 @@ export function ScannerView() {
                                 const u = item.quantity ? t / item.quantity : t;
                                 setScannedItems(items => items.map((it, i) => i === index ? { ...it, price: t, unitPrice: Math.round(u * 100) / 100 } : it));
                               }}
-                              className="w-12 bg-transparent border-none p-0 text-[#13ec37] font-black text-right focus:outline-none focus:ring-0 text-base"
+                              className="w-12 bg-transparent border-none p-0 text-[#10b981] font-black text-right focus:outline-none focus:ring-0 text-base"
                             />
-                            <span className="text-[#13ec37] font-black ml-0.5 text-base">€</span>
+                            <span className="text-[#10b981] font-black ml-0.5 text-base">€</span>
                           </div>
                         </td>
                         <td className="py-3 px-2 text-center align-top">
@@ -526,8 +526,8 @@ export function ScannerView() {
                   })}
                 </tbody>
               </table>
-              <div className="bg-[#19331e] p-4 border-t border-[#13ec37]/20 flex justify-between items-center">
-                <span className="text-[#92c99b] text-sm uppercase font-bold tracking-wider">Total Calculado</span>
+              <div className="bg-[#18181b] p-4 border-t border-[#10b981]/20 flex justify-between items-center">
+                <span className="text-[#a1a1aa] text-sm uppercase font-bold tracking-wider">Total Calculado</span>
                 <span className="text-2xl font-black text-white">{total.toFixed(2)}€</span>
               </div>
             </div>
@@ -540,13 +540,13 @@ export function ScannerView() {
       {showStoreSelector && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowStoreSelector(false)} />
-          <div className="relative w-full max-w-md bg-[#102213] rounded-t-3xl border-t border-[#13ec37]/10 safe-area-bottom">
+          <div className="relative w-full max-w-md bg-[#09090b] rounded-t-3xl border-t border-[#10b981]/10 safe-area-bottom">
             <button className="flex h-8 w-full items-center justify-center" onClick={() => setShowStoreSelector(false)}>
-              <div className="h-1.5 w-12 rounded-full bg-[#13ec37]/30"></div>
+              <div className="h-1.5 w-12 rounded-full bg-[#10b981]/30"></div>
             </button>
             <div className="px-6 pb-6 max-h-[60vh] overflow-y-auto">
               <h2 className="text-lg font-bold mb-1">Supermercado (obligatorio)</h2>
-              <p className="text-sm text-[#92c99b]/80 mb-4">
+              <p className="text-sm text-[#a1a1aa]/80 mb-4">
                 Cambia el propuesto, elige uno existente o añade uno nuevo
               </p>
 
@@ -556,12 +556,12 @@ export function ScannerView() {
                   value={newStoreName}
                   onChange={(e) => setNewStoreName(e.target.value)}
                   placeholder="Nueva tienda..."
-                  className="flex-1 px-4 py-3 bg-[#19331e] border border-[#13ec37]/20 rounded-xl text-white placeholder:text-[#92c99b]/50"
+                  className="flex-1 px-4 py-3 bg-[#18181b] border border-[#10b981]/20 rounded-xl text-white placeholder:text-[#a1a1aa]/50"
                 />
                 <button
                   onClick={handleCreateStore}
                   disabled={!newStoreName.trim()}
-                  className="px-4 py-3 bg-[#13ec37] text-[#102213] rounded-xl font-bold disabled:opacity-50"
+                  className="px-4 py-3 bg-[#10b981] text-[#09090b] rounded-xl font-bold disabled:opacity-50"
                 >
                   Crear
                 </button>
@@ -569,17 +569,17 @@ export function ScannerView() {
 
               {availableStores.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs text-[#92c99b]/60 uppercase tracking-wider mb-2">Tiendas guardadas</p>
+                  <p className="text-xs text-[#a1a1aa]/60 uppercase tracking-wider mb-2">Tiendas guardadas</p>
                   {availableStores.map((store, i) => (
                     <button
                       key={i}
                       onClick={() => handleSelectStore(store)}
                       className={`w-full p-3 rounded-xl text-left flex items-center gap-3 ${selectedStore === store
-                        ? 'bg-[#13ec37]/20 border border-[#13ec37]'
-                        : 'bg-[#19331e] border border-[#13ec37]/10'
+                        ? 'bg-[#10b981]/20 border border-[#10b981]'
+                        : 'bg-[#18181b] border border-[#10b981]/10'
                         }`}
                     >
-                      <span className="material-symbols-outlined text-[#13ec37]">store</span>
+                      <span className="material-symbols-outlined text-[#10b981]">store</span>
                       <span>{store}</span>
                     </button>
                   ))}
@@ -594,44 +594,44 @@ export function ScannerView() {
       {showProductMatcher && currentEditingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => { setShowProductMatcher(false); setEditingItemIndex(null); }} />
-          <div className="relative w-full max-w-md bg-[#102213] rounded-2xl border border-[#13ec37]/20 max-h-[80vh] overflow-hidden">
-            <div className="sticky top-0 bg-[#102213] p-4 border-b border-[#13ec37]/10">
+          <div className="relative w-full max-w-md bg-[#09090b] rounded-2xl border border-[#10b981]/20 max-h-[80vh] overflow-hidden">
+            <div className="sticky top-0 bg-[#09090b] p-4 border-b border-[#10b981]/10">
               <h2 className="text-lg font-bold">Vincular Producto</h2>
-              <p className="text-sm text-[#92c99b]/60 mt-1">&quot;{currentEditingItem.productName}&quot;</p>
+              <p className="text-sm text-[#a1a1aa]/60 mt-1">&quot;{currentEditingItem.productName}&quot;</p>
             </div>
 
             <div className="p-4 max-h-[60vh] overflow-y-auto">
               {/* Sugerencias */}
               {currentEditingItem.suggestions && currentEditingItem.suggestions.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-xs text-[#92c99b]/60 uppercase tracking-wider mb-2">Productos similares</p>
+                  <p className="text-xs text-[#a1a1aa]/60 uppercase tracking-wider mb-2">Productos similares</p>
                   {currentEditingItem.suggestions.map((suggestion, i) => (
                     <button
                       key={i}
                       onClick={() => handleMatchProduct(editingItemIndex!, suggestion)}
                       className={`w-full p-3 mb-2 rounded-xl text-left flex items-center justify-between ${currentEditingItem.matchedProductId === suggestion.id
-                        ? 'bg-[#13ec37]/20 border border-[#13ec37]'
-                        : 'bg-[#19331e] border border-[#13ec37]/10'
+                        ? 'bg-[#10b981]/20 border border-[#10b981]'
+                        : 'bg-[#18181b] border border-[#10b981]/10'
                         }`}
                     >
                       <div>
                         <p className="font-semibold">{suggestion.name}</p>
-                        <p className="text-xs text-[#92c99b]/60">{Math.round(suggestion.similarity * 100)}% similar</p>
+                        <p className="text-xs text-[#a1a1aa]/60">{Math.round(suggestion.similarity * 100)}% similar</p>
                       </div>
-                      <span className="material-symbols-outlined text-[#13ec37]">link</span>
+                      <span className="material-symbols-outlined text-[#10b981]">link</span>
                     </button>
                   ))}
                 </div>
               )}
 
               {/* Crear como nuevo */}
-              <div className="border-t border-[#13ec37]/10 pt-4">
-                <p className="text-xs text-[#92c99b]/60 uppercase tracking-wider mb-2">O crear como nuevo producto</p>
+              <div className="border-t border-[#10b981]/10 pt-4">
+                <p className="text-xs text-[#a1a1aa]/60 uppercase tracking-wider mb-2">O crear como nuevo producto</p>
                 <input
                   type="text"
                   defaultValue={currentEditingItem.customName || currentEditingItem.canonicalName || currentEditingItem.productName}
                   placeholder="Nombre del artículo madre..."
-                  className="w-full px-4 py-3 mb-3 bg-[#19331e] border border-[#13ec37]/20 rounded-xl text-white"
+                  className="w-full px-4 py-3 mb-3 bg-[#18181b] border border-[#10b981]/20 rounded-xl text-white"
                   id="customProductName"
                 />
                 <button
@@ -649,10 +649,10 @@ export function ScannerView() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-[#13ec37]/10">
+            <div className="p-4 border-t border-[#10b981]/10">
               <button
                 onClick={() => { setShowProductMatcher(false); setEditingItemIndex(null); }}
-                className="w-full py-3 bg-[#19331e] text-white rounded-xl font-semibold"
+                className="w-full py-3 bg-[#18181b] text-white rounded-xl font-semibold"
               >
                 Cancelar
               </button>
