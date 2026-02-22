@@ -32,14 +32,14 @@ export function ShoppingList() {
   const [isListening, setIsListening] = useState(false);
   const [voiceProcessing, setVoiceProcessing] = useState(false);
 
-  const loadItems = async () => {
-    setLoading(true);
+  const loadItems = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     const { data, error, isDemo: demoMode } = await getShoppingList();
     if (!error && data) {
       setItems(data);
       setIsDemo(demoMode || false);
     }
-    setLoading(false);
+    if (showLoading) setLoading(false);
   };
 
   const loadRecentProducts = async () => {
@@ -107,13 +107,13 @@ export function ShoppingList() {
       item.id === id ? { ...item, is_checked: !currentChecked } : item
     ));
     await toggleItemChecked(id, !currentChecked);
-    if (!isDemo) await loadItems();
+    if (!isDemo) await loadItems(false);
   };
 
   const handleDeleteItem = async (id: string) => {
     setItems(items.filter(item => item.id !== id));
     await deleteItem(id);
-    if (!isDemo) await loadItems();
+    if (!isDemo) await loadItems(false);
   };
 
   const handleFinalizePurchase = async () => {
@@ -367,10 +367,10 @@ export function ShoppingList() {
           {pendingItems.length > 0 && (
             <button
               onClick={() => setShowComparison(true)}
-              className="pointer-events-auto w-full flex items-center justify-center gap-2 bg-[#19331e] text-white font-bold py-3 rounded-xl border border-[#13ec37]/30 ios-button"
+              className="pointer-events-auto w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-2xl border border-purple-400/30 ios-button shadow-[0_0_15px_rgba(147,51,234,0.3)]"
             >
-              <span className="material-symbols-outlined">compare_arrows</span>
-              <span>Comparar precios ({pendingItems.length})</span>
+              <span className="material-symbols-outlined text-xl">auto_awesome</span>
+              <span>Calculadora del Ahorro Invisible</span>
             </button>
           )}
 
