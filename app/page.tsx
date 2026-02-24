@@ -6,7 +6,7 @@ import { DashboardView } from "@/components/DashboardView";
 import Image from "next/image";
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'list'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'list'>('list');
 
   return (
     <div className="min-h-screen bg-[#09090b] text-white">

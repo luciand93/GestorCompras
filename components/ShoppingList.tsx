@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   getShoppingList,
@@ -21,6 +21,7 @@ import { hapticFeedback } from "@/utils/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function ShoppingList() {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<IShoppingListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
@@ -83,8 +84,25 @@ export function ShoppingList() {
     []
   );
 
-  const handleInputChange = (value: string) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const isDeleting = (e.nativeEvent as any).inputType === "deleteContentBackward" || (e.nativeEvent as any).inputType === "deleteWordBackward";
+
     setNewItemName(value);
+
+    if (value.length > 0 && !isDeleting) {
+      const match = motherArticles.find(m => m.toLowerCase().startsWith(value.toLowerCase()));
+      if (match) {
+        setNewItemName(match);
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.setSelectionRange(value.length, match.length);
+          }
+        }, 0);
+        return;
+      }
+    }
+
     searchForSuggestions(value);
   };
 
@@ -436,9 +454,10 @@ export function ShoppingList() {
               <div className="relative mb-4">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#a1a1aa]/60">search</span>
                 <input
+                  ref={inputRef}
                   type="text"
                   value={newItemName}
-                  onChange={(e) => handleInputChange(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
                   placeholder="Buscar o escribir producto..."
                   className="w-full pl-10 pr-4 py-3 text-lg border border-[#10b981]/20 rounded-xl bg-[#18181b] text-white placeholder:text-[#a1a1aa]/40 focus:outline-none focus:ring-2 focus:ring-[#10b981]"
@@ -568,6 +587,19 @@ export function ShoppingList() {
       {/* Comparison Modal */}
       {showComparison && (
         <ListComparison onClose={() => setShowComparison(false)} />
+      )}
+
+      {/* Listening Overlay */}
+      {isListening && (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col items-center justify-center p-4 animate-in fade-in">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-32 h-32 bg-red-500/20 rounded-full animate-ping"></div>
+            <div className="absolute w-24 h-24 bg-red-500/40 rounded-full animate-pulse"></div>
+            <span className="material-symbols-outlined text-6xl text-red-500 relative z-10" style={{ fontVariationSettings: "'FILL' 1" }}>mic</span>
+          </div>
+          <p className="text-red-500 font-bold text-xl mt-8 text-center">Escuchando...</p>
+          <p className="text-[#a1a1aa]/60 text-sm mt-2 text-center">Habla ahora para recoger los productos</p>
+        </div>
       )}
 
       {/* Voice Processing Overlay */}

@@ -52,18 +52,35 @@ export async function getShoppingList() {
 export async function addToShoppingList(productName: string, quantity: number = 1) {
   if (!isSupabaseConfigured() || !supabase) {
     // En modo demo, simular éxito
-    return { 
-      data: { 
-        id: `demo-${Date.now()}`, 
-        product_name: productName, 
-        quantity, 
+    return {
+      data: {
+        id: `demo-${Date.now()}`,
+        product_name: productName,
+        quantity,
         is_checked: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }, 
+      },
       error: null,
-      isDemo: true 
+      isDemo: true
     };
+  }
+
+  // Check if product exists in products table, if not, create it
+  try {
+    const { data: existingProduct } = await supabase
+      .from("products")
+      .select("id")
+      .ilike("name", productName)
+      .limit(1)
+      .single();
+
+    if (!existingProduct) {
+      // Create 'articulo madre'
+      await supabase.from("products").insert({ name: productName });
+    }
+  } catch (e) {
+    console.warn("Could not check/create product in products table", e);
   }
 
   const { data, error } = await supabase
